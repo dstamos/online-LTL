@@ -14,11 +14,14 @@ from scipy.optimize import fmin_cg
 
 def main(data_settings, training_settings):
     np.random.seed(data_settings['seed'])
-    data = synthetic_data_gen(data_settings)
+
+    if DATASET == 'synthetic_regression':
+        data = synthetic_data_gen(data_settings)
     training(data, data_settings, training_settings)
 
 
 def training(data, data_settings, training_settings):
+    seed = data_settings['seed']
     param1_range = training_settings['param1_range']
     n_tasks = data_settings['n_tasks']
     n_dims = data_settings['n_dims']
@@ -122,7 +125,6 @@ def training(data, data_settings, training_settings):
         print('Smart ITL: mean val MSE: %7.5f | mean test MSE: %7.5f' %
               (np.nanmean(all_task_val_perf), np.nanmean(all_task_test_perf)))
 
-
     elif METHOD == 'batch_LTL':
 
         param1_range = training_settings['param1_range']
@@ -135,68 +137,24 @@ def training(data, data_settings, training_settings):
         task_range_test = data_settings['task_range_test']
 
         # training
-        all_val_perf = [None] * len(param1_range)
+        all_train_perf, all_val_perf, all_test_perf = [None] * len(param1_range), [None] * len(param1_range), [None] * len(param1_range)
         best_val_performance = 10 ** 8
         for param1_idx, param1 in enumerate(param1_range):
-
-            ################################################ #####
-            # OPTIMISATION
-            D = random.randn(n_dims, n_dims)
-
             W_pred = np.zeros((n_dims, n_tasks))
+
+            #####################################################
+            # OPTIMISATION
             X_train, Y_train = [None] * n_tasks, [None] * n_tasks
             for _, task_idx in enumerate(task_range_tr):
                 X_train[task_idx] = np.concatenate((data['X_val'][task_idx], data['X_train'][task_idx]))
                 Y_train[task_idx] = np.concatenate((data['Y_val'][task_idx], data['Y_train'][task_idx]))
                 n_points = len(Y_train[task_idx])
 
-            batch_objective = lambda D: sum([n_points * norm(pinv(X_train[i] @ D @ X_train[i].T + n_points * eye(n_points)) @ Y_train[i])**2 for i in task_range_tr])
-            batch_grad = lambda D: batch_grad_func(D, task_range_tr, data)
+            D = random.randn(n_dims, n_dims)
+            D = solve_wrt_D(D, data, X_train, Y_train, n_points, task_range_tr, param1)
 
-            Lipschitz = (6 / (np.sqrt(n_points) * n_points**2)) * max([norm(X_train[i], ord=np.inf)**3 for i in task_range_tr])
-            # Lipschitz = (2 / n_points) * max([norm(X_train[i], ord=np.inf)**2 for i in task_range_tr])
-            step_size = 1 / Lipschitz
-            # step_size = 55
-
-            curr_obj = batch_objective(D)
-
-            objectives = []
-            n_iter = 10**10
-            curr_tol = 10 ** 10
-            conv_tol = 10 ** -5
-            c_iter = 0
-
-
-            while (c_iter < n_iter) and (curr_tol > conv_tol):
-                prev_D = D
-                prev_obj = curr_obj
-
-                D = prev_D - step_size * batch_grad(prev_D)
-
-
-                curr_obj = batch_objective(D)
-                objectives.append(curr_obj)
-
-                curr_tol = abs(curr_obj - prev_obj) / prev_obj
-
-                if (c_iter % 5000 == 0):
-                    # plt.plot(objectives, "b")
-                    # plt.pause(0.0001)
-                    print("iter: %5d | obj: %20.18f | tol: %20.18f" % (c_iter, curr_obj, curr_tol))
-                c_iter = c_iter + 1
-            # projection on the 1/lambda trace norm ball
-            U, s, Vt = svd(D) # eigen
-            # U, s = np.linalg.eig(D)
-            s = np.sign(s) * [max(np.abs(s[i]) - param1, 0) for i in range(len(s))]
-            D = U @ np.diag(s) @ Vt
-            # D = U @ np.diag(s) @ U.T
-
-            plt.figure()
-            plt.imshow(D)
-            plt.pause(0.01)
-            # objectives = np.array(objectives)
-            # return D, objectives
-
+            train_perf = mean_squared_error(data['X_val'], data['Y_val'], W_pred, task_range_tr)
+            all_train_perf[param1_idx] = train_perf
             #####################################################
             # VALIDATION
             X_train, Y_train = [None] * n_tasks, [None] * n_tasks
@@ -204,22 +162,9 @@ def training(data, data_settings, training_settings):
                 X_train[task_idx] = data['X_train'][task_idx]
                 Y_train[task_idx] = data['Y_train'][task_idx]
 
-            Y_val_pred = [None] * n_tasks
-            for _, task_idx in enumerate(task_range_val):
-                # fixing D and solving for w_t
-                n_points = len(Y_train[task_idx])
-                # replace pinv with np.linalg.solve or wahtever
+            W_pred = solve_wrt_w(D, X_train, Y_train, n_tasks, data, W_pred, task_range_val)
 
-                curr_w_pred = (D @ X_train[task_idx].T @ pinv(X_train[task_idx] @ D @ X_train[task_idx].T + n_points * eye(n_points)) @ Y_train[task_idx]).ravel()
-                W_pred[:, task_idx] = curr_w_pred
-
-
-                Y_val_pred[task_idx] = data['X_val'][task_idx] @ curr_w_pred
-
-
-            val_perf = mean_squared_error(data['Y_val'], Y_val_pred, task_range_val)
-            weight_error = weight_vector_perf(Wtrue, W_pred, task_range_val)
-
+            val_perf = mean_squared_error(data['X_val'], data['Y_val'], W_pred, task_range_val)
             all_val_perf[param1_idx] = val_perf
 
             if val_perf < best_val_performance:
@@ -229,36 +174,103 @@ def training(data, data_settings, training_settings):
                 best_D = D
                 best_val_prf = val_perf
             print('Batch LTL: param1: %12.10f | val MSE: %7.5f | time: %7.5f' % (param1, val_perf, time.time() - t))
-            asdf = 1
+
+            #####################################################
+            # TEST
+            X_train, Y_train = [None] * n_tasks, [None] * n_tasks
+            for _, task_idx in enumerate(task_range_test):
+                X_train[task_idx] = np.concatenate((data['X_val'][task_idx], data['X_train'][task_idx]))
+                Y_train[task_idx] = np.concatenate((data['Y_val'][task_idx], data['Y_train'][task_idx]))
+
+            W_pred = solve_wrt_w(D, X_train, Y_train, n_tasks, data, W_pred, task_range_test)
+
+            test_perf = mean_squared_error(data['X_test'], data['Y_test'], W_pred, task_range_test)
+            all_test_perf[param1_idx] = test_perf
+
+        results = {}
+        results['all_training_errors'] = all_train_perf
+        results['all_val_perf'] = all_val_perf
+        results['all_test_perf'] = all_test_perf
+
+        save_results(results, data_settings, training_settings, DATASET)
+
+        print('Batch LTL: val MSE: %7.5f | test MSE: %7.5f' % (val_perf, test_perf))
+
+    elif METHOD == 'online_LTL':
+
+        param1_range = training_settings['param1_range']
+        n_tasks = data_settings['n_tasks']
+        n_dims = data_settings['n_dims']
+        Wtrue = data['W_true']
+        task_range = data_settings['task_range']
+        task_range_tr = data_settings['task_range_tr']
+        task_range_val = data_settings['task_range_val']
+        task_range_test = data_settings['task_range_test']
+
+        param1 = param1_range[PARAM1_IDX]
+
+        # training
+        all_train_perf, all_val_perf, all_test_perf = [None] * len(task_range_tr), [None] * len(task_range_tr), [None] * len(task_range_tr)
+
+        c_iter = 0
+        D = random.randn(n_dims, n_dims)
+        for pure_task_idx, curr_task_range_tr in enumerate(task_range_tr):
+
+            W_pred = np.zeros((n_dims, n_tasks))
+            #####################################################
+            # OPTIMISATION
+            X_train, Y_train = [None] * n_tasks, [None] * n_tasks
+            for _, task_idx in enumerate([curr_task_range_tr]):
+                X_train[task_idx] = np.concatenate((data['X_val'][task_idx], data['X_train'][task_idx]))
+                Y_train[task_idx] = np.concatenate((data['Y_val'][task_idx], data['Y_train'][task_idx]))
+                n_points = len(Y_train[task_idx])
+
+            # D = solve_wrt_D(D, data, X_train, Y_train, n_points, [curr_task_range_tr], param1)
+            D, c_iter = solve_wrt_D_stochastic(D, data, X_train, Y_train, n_points, [curr_task_range_tr], param1, c_iter)
+
+            print(D[0, :5])
+            # print(c_iter)
+            ############## this is not correct (0 prediction for future tasks)
+            # need to take task_range_tr[pure_task_idx:] and predict a w for each of them based on our current D
+            train_perf = mean_squared_error(data['X_val'], data['Y_val'], W_pred, task_range_tr)
+            ##############
+            all_train_perf[pure_task_idx] = train_perf
+            #####################################################
+            # VALIDATION
+            X_train, Y_train = [None] * n_tasks, [None] * n_tasks
+            for _, task_idx in enumerate(task_range_val):
+                X_train[task_idx] = data['X_train'][task_idx]
+                Y_train[task_idx] = data['Y_train'][task_idx]
+
+            W_pred = solve_wrt_w(D, X_train, Y_train, n_tasks, data, W_pred, task_range_val)
+
+            val_perf = mean_squared_error(data['X_val'], data['Y_val'], W_pred, task_range_val)
+            all_val_perf[pure_task_idx] = val_perf
+
+            #####################################################
+            # TEST
+            X_train, Y_train = [None] * n_tasks, [None] * n_tasks
+            for _, task_idx in enumerate(task_range_test):
+                X_train[task_idx] = np.concatenate((data['X_val'][task_idx], data['X_train'][task_idx]))
+                Y_train[task_idx] = np.concatenate((data['Y_val'][task_idx], data['Y_train'][task_idx]))
+
+            W_pred = solve_wrt_w(D, X_train, Y_train, n_tasks, data, W_pred, task_range_test)
+
+            test_perf = mean_squared_error(data['X_test'], data['Y_test'], W_pred, task_range_test)
+            all_test_perf[pure_task_idx] = test_perf
+
+            print('online LTL (#T: %3d): val MSE: %7.5f | test MSE: %7.5f' % (curr_task_range_tr, val_perf, test_perf))
+
+        results = {}
+        results['all_training_errors'] = all_train_perf
+        results['all_val_perf'] = all_val_perf
+        results['all_test_perf'] = all_test_perf
+
+        save_results(results, data_settings, training_settings, DATASET)
 
 
-        #####################################################
-        # TEST
-        X_train, Y_train = [None] * n_tasks, [None] * n_tasks
-        for _, task_idx in enumerate(task_range_test):
-            X_train[task_idx] = np.concatenate((data['X_val'][task_idx], data['X_train'][task_idx]))
-            Y_train[task_idx] = np.concatenate((data['Y_val'][task_idx], data['Y_train'][task_idx]))
-
-        Y_test_pred = [None] * n_tasks
-        for _, task_idx in enumerate(task_range_test):
-            # fixing D and solving for w_t
-            n_points = len(Y_train[task_idx])
-            curr_w_pred = (best_D @ X_train[task_idx].T @ pinv(X_train[task_idx] @ best_D @ X_train[task_idx].T + n_points * eye(n_points)) @ Y_train[task_idx]).ravel()
-            W_pred[:, task_idx] = curr_w_pred
-            Y_test_pred[task_idx] = data['X_test'][task_idx] @ curr_w_pred
-
-        test_perf = mean_squared_error(data['Y_test'], Y_test_pred, task_range_test)
-        weight_error = weight_vector_perf(Wtrue, W_pred, task_range_test)
-
-
-
-
-        print('Batch ILL: val MSE: %7.5f | test MSE: %7.5f' % (val_perf, test_perf))
-
-    k=1
-
-                # fmin_cg
-                # https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.optimize.fmin_cg.html
+        # fmin_cg
+        # https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.optimize.fmin_cg.html
 
 
 
@@ -290,18 +302,24 @@ def training(data, data_settings, training_settings):
 
 if __name__ == "__main__":
 
-    METHOD = 'batch_LTL'
     # METHOD = 'smart_ITL'
     # METHOD = 'dumb_ITL'
+    # METHOD = 'batch_LTL'
+    METHOD = 'online_LTL'
 
-
+    DATASET = 'synthetic_regression'
 
 
     if len(sys.argv) > 1:
         print("if")
-        a = sys.argv[2] # etc
+        PARAM1_IDX = sys.argv[1] # etc
     else:
         from fixed_run_settings import *
+
+        PARAM1_IDX = 4
+        # TRAINING_SETTINGS['param1_range'] = [TRAINING_SETTINGS['param1_range'][10]]
+
+
 
     main(DATA_SETTINGS, TRAINING_SETTINGS)
     print("done")
