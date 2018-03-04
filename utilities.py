@@ -23,7 +23,7 @@ def synthetic_data_gen(data_settings):
 
     generation_mode = 'sparse_explicit'
     if generation_mode == 'sparse_explicit':
-        sparsity = 3
+        sparsity = 8
 
         fixed_sparsity =  random.choice(np.arange(0, n_dims), sparsity, replace=False)
         # diagonal = np.zeros(n_dims)
@@ -74,14 +74,14 @@ def mean_squared_error(X, true, W, task_indeces):
     return mse
 
 
-# def mean_squared_error(true, pred, task_indeces):
-#     n_tasks = len(task_indeces)
-#     mse = 0
-#     for _, task_idx in enumerate(task_indeces):
-#         n_points = len(true[task_idx])
-#         mse = mse + norm(true[task_idx] - pred[task_idx])**2 / n_points
-#     mse = mse / n_tasks
-#     return mse
+def mean_squared_error_ITL(true, pred, task_indeces):
+    n_tasks = len(task_indeces)
+    mse = 0
+    for _, task_idx in enumerate(task_indeces):
+        n_points = len(true[task_idx])
+        mse = mse + norm(true[task_idx] - pred[task_idx])**2 / n_points
+    mse = mse / n_tasks
+    return mse
 
 
 def weight_vector_perf(Wtrue, Wpred, task_indeces):
@@ -171,7 +171,7 @@ def solve_wrt_D_stochastic(D, data, X_train, Y_train, n_points, task_range, para
     curr_obj = batch_objective(D)
 
     objectives = []
-    n_iter = 10
+    n_iter = 1
     curr_tol = 10 ** 10
     conv_tol = 10 ** -5
     inner_iter = 0
@@ -183,7 +183,7 @@ def solve_wrt_D_stochastic(D, data, X_train, Y_train, n_points, task_range, para
         prev_obj = curr_obj
 
         c_iter = c_iter + inner_iter
-        step_size = 1 / np.sqrt(c_iter)
+        step_size = 1000 / np.sqrt(c_iter)
         D = prev_D - step_size * batch_grad(prev_D)
 
         curr_obj = batch_objective(D)
