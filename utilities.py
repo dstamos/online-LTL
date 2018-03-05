@@ -207,17 +207,13 @@ def solve_wrt_D_stochastic(D, data, X_train, Y_train, n_points, task_range, para
     return D, c_iter
 
 
-def save_results(results, data_settings, training_settings, dataset):
-    seed = data_settings['seed']
+def save_results(results, data_settings, training_settings, filename, foldername):
     param1_range = training_settings['param1_range']
 
-    if len(param1_range) == 1:
-        save_filename = "seed_" + str(seed) + "-param1_" + str(param1_range[0])
-        save_foldername = 'results/' + dataset
-        if not os.path.exists(save_foldername):
-            os.makedirs(save_foldername)
-        f = open(save_foldername + '/' + save_filename + ".pckl", 'wb')
-        pickle.dump(results, f)
-        pickle.dump(data_settings, f)
-        pickle.dump(training_settings, f)
-        f.close()
+    if not os.path.exists(foldername):
+        os.makedirs(foldername)
+    f = open(foldername + '/' + filename + ".pckl", 'wb')
+    pickle.dump(results, f)
+    pickle.dump(data_settings, f)
+    pickle.dump(training_settings, f)
+    f.close()
