@@ -1,16 +1,8 @@
-import numpy as np
-
-import sys
-from utilities import *
+from src.utilities import *
 
 from numpy.linalg import pinv
-from numpy import identity as eye
-from numpy import dot
-from numpy.linalg import svd
 import time
 
-from sklearn.linear_model import Ridge as ridge
-from scipy.optimize import fmin_cg
 
 def training(data, data_settings, training_settings):
     method = training_settings['method']
