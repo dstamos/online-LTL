@@ -1,0 +1,25 @@
+# user settings
+.gitattributes
+
+
+# general
+*.png
+*.html
+*.pdf
+*.pyc
+*.pckl
+*.log
+*.swo
+*.json
+*.bak
+*.py___jb_tmp___
+
+# folders
+venv/
+.idea/
+_pycache_/
+
+# temp
+scratch*.py
+notes.txt
+
