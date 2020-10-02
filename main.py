@@ -1,15 +1,69 @@
 from src.training import *
+from src.data_management import DataHandler
 
-def main(data_settings, training_settings):
-    if data_settings['dataset'] == 'synthetic_regression':
-        data = synthetic_data_gen(data_settings)
-    elif data_settings['dataset'] == 'schools':
-        data, data_settings = schools_data_gen(data_settings)
-    training(data, data_settings, training_settings)
+
+def main():
+    pass
+    # training(data, data_settings, training_settings)
 
 
 if __name__ == "__main__":
 
+    seed = 999
+    training_tasks_pct = 0.5
+    validation_tasks_pct = 0.05
+    test_tasks_pct = 0.45
+
+    training_points_pct = 0.5
+    validation_points_pct = 0.25
+    test_points_pct = 0.25
+
+    np.random.randn(seed)
+    data_settings = {'seed': seed,
+                     'training_tasks_pct': training_tasks_pct,
+                     'validation_tasks_pct': validation_tasks_pct,
+                     'test_tasks_pct': test_tasks_pct,
+                     'training_points_pct': training_points_pct,
+                     'validation_points_pct': validation_points_pct,
+                     'test_points_pct': test_points_pct}
+
+    ########################################################################
+    ########################################################################
+    ########################################################################
+    # This chunk is hardcoded as an example of the structure the data should have.
+    # Aist of all the features and labels for all tasks basically
+    n_tasks = 100
+    dims = 30
+    noise = 1
+    all_features = []
+    all_labels = []
+    common_mean = 2 * np.random.randn(dims)
+    for task_idx in range(n_tasks):
+        # Total number of points for the current task.
+        n_points = np.random.randint(low=60, high=100)
+
+        # Generating and normalizing the data.
+        features = random.randn(n_points, dims)
+        features = features / norm(features, axis=1, keepdims=True)
+
+        # Generating the weight vector "around" the common mean.
+        weight_vector = common_mean + np.random.randn(dims)
+
+        # Linear model plus some noise.
+        labels = features @ weight_vector + noise * random.randn(n_points)
+
+        # Throwing the features and labels in their corresponding dictionary place.
+        all_features.append(features)
+        all_labels.append(labels)
+    ########################################################################
+    ########################################################################
+    ########################################################################
+
+    data = DataHandler(data_settings, all_features, all_labels)
+
+
+
+    ##
     def split(a, n):
         k, m = divmod(len(a), n)
         return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(n))
