@@ -31,9 +31,9 @@ class DataHandler:
         self.validation_tasks_indexes = validation_tasks_indexes
         self.test_tasks_indexes = test_tasks_indexes
 
-        self.training_tasks = []
-        self.validation_tasks = []
-        self.test_tasks = []
+        self.training_tasks = None
+        self.validation_tasks = None
+        self.test_tasks = None
 
         self._data_management(all_features, all_labels)
 
@@ -50,7 +50,8 @@ class DataHandler:
         validation_points_pct = self.settings['validation_points_pct']
         test_points_pct = self.settings['test_points_pct']
 
-        def dataset_splits(task_indexes, bucket):
+        def dataset_splits(task_indexes):
+            bucket = []
             for task_index in task_indexes:
                 # Split the dataset for the current tasks into training/validation/test
                 training_features, temp_features, training_labels, temp_labels = train_test_split(all_features[task_index], all_labels[task_index], test_size=1 - training_points_pct, shuffle=True)
@@ -81,6 +82,6 @@ class DataHandler:
                 bucket.append(data)
             return bucket
 
-        self.training_tasks = dataset_splits(self.training_tasks_indexes, self.training_tasks)
-        self.validation_tasks = dataset_splits(self.validation_tasks_indexes, self.validation_tasks)
-        self.test_tasks = dataset_splits(self.test_tasks_indexes, self.test_tasks)
+        self.training_tasks = dataset_splits(self.training_tasks_indexes)
+        self.validation_tasks = dataset_splits(self.validation_tasks_indexes)
+        self.test_tasks = dataset_splits(self.test_tasks_indexes)
