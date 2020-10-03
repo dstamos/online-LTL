@@ -88,30 +88,14 @@ def variance_online_ltl(data, training_settings):
 
 def solve_wrt_h_stochastic(prev_h, x, y, param, step_size_bit, curr_iteration=0):
     n = len(y)
-    dims = x.shape[1]
-
-    # grad_fixed_part = 2 * param1**2 * n * x.T @ matrix_power(pinv(x @ x.T + param1 * n * np.eye(n)), 2)
-
-    c_n_lambda = x.T @ x / n + param * np.eye(dims)
-    x_hat = (param / np.sqrt(n)) * x @ pinv(c_n_lambda)
-    y_hat = (1 / np.sqrt(n)) * (y - x @ pinv(c_n_lambda) @ (x.T @ y) / n)
 
     def grad(curr_h):
-        gradient = x_hat.T @ (x_hat @ curr_h - y_hat)
-        return gradient
-
-    # grad_fixed_part = 2 * param1**2 * n * x.T @ matrix_power(pinv(x @ x.T + param1 * n * np.eye(n)), 2)
-    #
-    # def grad(curr_h):
-    #     gradient = grad_fixed_part @ ((x @ curr_h).ravel() - y)
-    #     return gradient
+        return 2 * param**2 * n * x.T @ matrix_power(pinv(x @ x.T + param * n * np.eye(n)), 2) @ ((x @ curr_h).ravel() - y)
 
     curr_iteration = curr_iteration + 1
-    # step_size = 0.5 / curr_iteration
-    step_size = step_size_bit / (2*np.sqrt(2)*(step_size_bit + 1)*np.sqrt(curr_iteration))
-    granada = grad(prev_h)
-    h = prev_h - step_size * granada
-    # print(norm(granada))
+    step_size = np.sqrt(2) * step_size_bit / ((step_size_bit + 1) * np.sqrt(curr_iteration))
+    # step_size = step_size_bit / (2*np.sqrt(2)*(step_size_bit + 1)*np.sqrt(curr_iteration))
+    h = prev_h - step_size * grad(prev_h)
 
     return h
 

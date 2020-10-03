@@ -11,9 +11,9 @@ def main():
     validation_tasks_pct = 0.05
     test_tasks_pct = 0.1
 
-    training_points_pct = 0.5
-    validation_points_pct = 0.25
-    test_points_pct = 0.25
+    training_points_pct = 0.2
+    validation_points_pct = 0.2
+    test_points_pct = 0.6
 
     np.random.seed(seed)
     data_settings = {'seed': seed,
@@ -30,14 +30,14 @@ def main():
     # This chunk is hardcoded as an example of the structure the data should have.
     # A list of all the features and labels for all tasks basically
     n_tasks = 300
-    dims = 20
-    noise = 1
+    dims = 30
+    noise = 0.5
     all_features = []
     all_labels = []
     common_mean = 5 * np.random.randn(dims)
     for task_idx in range(n_tasks):
         # Total number of points for the current task.
-        n_points = np.random.randint(low=60, high=100)
+        n_points = np.random.randint(low=40, high=50)
 
         # Generating and normalizing the data.
         features = np.random.randn(n_points, dims)
@@ -57,15 +57,18 @@ def main():
 
     data = DataHandler(data_settings, all_features, all_labels)
 
-    # training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-6, 3, 36)],
+    # training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 36)],
     #                      'method': 'ITL'}
 
     # training_settings = {'regularization_parameter': 1e-2,
     #                      'method': 'batch_LTL'}
     #
-    training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-2, 1, 6)],
-                         'step_size': 1e+2,
+    training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-2, 0.3, 8)],
+                         'step_size': 1e+3,
                          'method': 'online_LTL'}
+
+    # TODO What is the exact interaction that breaks online ltl when the regul param is large?
+    # TODO Finish online ltl
     #
     # training_settings = {'regularization_parameter': 1e-2,
     #                      'method': 'MTL'}

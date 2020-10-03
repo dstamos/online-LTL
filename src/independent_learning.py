@@ -48,7 +48,8 @@ def itl(data, training_settings):
     for task_idx in range(len(data.test_tasks)):
         x_test = data.test_tasks[task_idx].test.features
         y_test = data.test_tasks[task_idx].test.labels
-        test_perfomances[task_idx] = mean_squared_error(y_test, x_test @ curr_w)
+        test_perfomances[task_idx] = mean_squared_error(y_test, x_test @ best_weight_vectors[task_idx])
+    print('final test MSE: %8.5f' % (np.mean(test_perfomances)))
 
     results = {'test_perfomances': np.mean(test_perfomances)}
 
