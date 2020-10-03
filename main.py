@@ -60,7 +60,7 @@ def main():
     # training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 36)],
     #                      'method': 'ITL'}
 
-    # training_settings = {'regularization_parameter': 1e-2,
+    # training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-1, 0.3, 36)],
     #                      'method': 'batch_LTL'}
     #
     training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-2, 0.3, 8)],
@@ -68,12 +68,17 @@ def main():
                          'method': 'online_LTL'}
 
     # TODO What is the exact interaction that breaks online ltl when the regul param is large?
-    # TODO Finish online ltl
+    # TODO Rework the training to have .fit .predict
+    # done Finish online ltl
     #
     # training_settings = {'regularization_parameter': 1e-2,
     #                      'method': 'MTL'}
 
     training(data, training_settings)
+    print('ground truth')
+    print(common_mean)
+
+    print('done')
 
 
 if __name__ == "__main__":
