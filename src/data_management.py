@@ -18,7 +18,7 @@ class DataHandler:
             a list of y vectors of length n_tasks (each y vector: (n_points,))
         """
         self.settings = settings
-        self.dims = all_features[0].shape[0]
+        self.dims = all_features[0].shape[1]
 
         # Split the tasks _indexes_ into training/validation/test
         training_tasks_pct = settings['training_tasks_pct']
@@ -56,10 +56,6 @@ class DataHandler:
                 # Split the dataset for the current tasks into training/validation/test
                 training_features, temp_features, training_labels, temp_labels = train_test_split(all_features[task_index], all_labels[task_index], test_size=1 - training_points_pct, shuffle=True)
                 validation_features, test_features, validation_labels, test_labels = train_test_split(temp_features, temp_labels, test_size=test_points_pct / (test_points_pct + validation_points_pct))
-
-                # Data = namedtuple('Data', ['n_points', 'features', 'labels'])
-                # SetType = namedtuple('SetType', ['training', 'validation', 'test'])
-                # data = SetType(Data, Data, Data)
 
                 training = namedtuple('Data', ['n_points', 'features', 'labels'])
                 training.features = training_features
