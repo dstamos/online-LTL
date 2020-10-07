@@ -23,7 +23,7 @@ def variance_online_ltl(data, training_settings):
             x_train = data.training_tasks[task_idx].training.features
             y_train = data.training_tasks[task_idx].training.labels
 
-            mean_vector = solve_wrt_h(mean_vector, x_train, y_train, regularization_parameter, training_settings['step_size'], curr_iteration=task_idx)
+            mean_vector = solve_wrt_h(mean_vector, x_train, y_train, regularization_parameter, training_settings['step_size'], curr_iteration=task_idx, inner_iter_cap=3)
             all_h.append(mean_vector)
             # average_h = np.mean(all_h, axis=0)
             average_h = mean_vector
@@ -57,7 +57,7 @@ def variance_online_ltl(data, training_settings):
             validation_perf = mean_squared_error(y_test, x_test @ w)
             validation_performances.append(validation_perf)
         validation_performance = np.mean(validation_performances)
-        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5f} | test MSE: {np.mean(current_test_errors):8.5f} | norm h: {norm(best_mean_vector):4.2f}')
+        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5e} | test MSE: {np.mean(current_test_errors):8.5e}')
 
         validation_curve.append(validation_performance)
 
@@ -79,15 +79,19 @@ def variance_online_ltl(data, training_settings):
     return results
 
 
-def solve_wrt_h(prev_h, x, y, param, step_size_bit, curr_iteration=0):
+def solve_wrt_h(h, x, y, param, step_size_bit, curr_iteration=0, inner_iter_cap=10):
     n = len(y)
 
     def grad(curr_h):
         return 2 * param**2 * n * x.T @ matrix_power(pinv(x @ x.T + param * n * np.eye(n)), 2) @ ((x @ curr_h).ravel() - y)
 
-    curr_iteration = curr_iteration + 1
-    step_size = np.sqrt(2) * step_size_bit / ((step_size_bit + 1) * np.sqrt(curr_iteration))
-    h = prev_h - step_size * grad(prev_h)
+    i = 0
+    while i < inner_iter_cap:
+        i = i + 1
+        prev_h = h
+        curr_iteration = curr_iteration + i
+        step_size = np.sqrt(2) * step_size_bit / ((step_size_bit + 1) * np.sqrt(curr_iteration))
+        h = prev_h - step_size * grad(prev_h)
 
     return h
 
@@ -97,15 +101,13 @@ def solve_wrt_w(h, x, y, param):
     dims = x.shape[1]
 
     c_n_lambda = x.T @ x / n + param * np.eye(dims)
-    w = c_n_lambda @ (x.T @ y / n + param * h).ravel()
+    w = pinv(c_n_lambda) @ (x.T @ y / n + param * h).ravel()
 
     return w
 
 
 def variance_batch_ltl(data, training_settings):
     dims = data.dims
-    best_mean_vector = np.random.randn(dims) / norm(np.random.randn(dims))
-
     best_val_performance = np.Inf
 
     validation_curve = []
@@ -163,7 +165,7 @@ def variance_batch_ltl(data, training_settings):
 
         validation_curve.append(validation_performance)
 
-        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5f} | test MSE: {np.mean(test_performances):8.5f} | norm h: {norm(best_mean_vector):4.2f}')
+        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5e} | test MSE: {np.mean(test_performances):8.5e}')
         # best_h = np.average(all_h, axis=0)
 
         if validation_performance < best_val_performance:
