@@ -57,7 +57,7 @@ def variance_online_ltl(data, training_settings):
             validation_perf = mean_squared_error(y_test, x_test @ w)
             validation_performances.append(validation_perf)
         validation_performance = np.mean(validation_performances)
-        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5f} | test MSE: {test_perf:8.5f} | norm h: {norm(best_mean_vector):4.2f}')
+        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5f} | test MSE: {np.mean(current_test_errors):8.5f} | norm h: {norm(best_mean_vector):4.2f}')
 
         validation_curve.append(validation_performance)
 
@@ -74,7 +74,6 @@ def variance_online_ltl(data, training_settings):
             best_mean_vector = average_h
             best_test_performances = test_performances
 
-    print(best_mean_vector)
     results = {'best_mean_vector': best_mean_vector,
                'best_test_performances': best_test_performances}
     return results
@@ -101,42 +100,6 @@ def solve_wrt_w(h, x, y, param):
     w = c_n_lambda @ (x.T @ y / n + param * h).ravel()
 
     return w
-
-# def solve_wrt_h_stochastic(h, x, y, param1, step_size_bit):
-#     n = len(y)
-#
-#     obj_fixed_part = pinv(x @ x.T + param1 * n * np.eye(n))
-#     grad_fixed_part = 2 * param1**2 * n * x.T @ matrix_power(pinv(x @ x.T + param1 * n * np.eye(n)), 2)
-#
-#     def obj(curr_h):
-#         objective = param1**2 * n * norm(obj_fixed_part @ (x @ curr_h - y)) ** 2
-#         return objective
-#
-#     def grad(curr_h):
-#         gradient = grad_fixed_part @ ((x @ curr_h).ravel() - y)
-#         return gradient
-#
-#     all_h = []
-#     objectives = []
-#
-#     curr_iter = 0
-#     max_epochs = 1
-#     curr_epoch = 0
-#     while curr_epoch < max_epochs:
-#         curr_epoch = curr_epoch
-#         prev_h = h
-#
-#         curr_iter = curr_iter + 1
-#         step_size = step_size_bit / (2*np.sqrt(2)*(step_size_bit + 1)*np.sqrt(curr_iter))
-#         h = prev_h - step_size * grad(prev_h)
-#         all_h.append(h)
-#
-#         curr_obj = obj(h)
-#         objectives.append(curr_obj)
-#
-#         print("iter: %5d | obj: %20.15f" % (curr_iter, curr_obj))
-#
-#     return np.mean(all_h)
 
 
 def variance_batch_ltl(data, training_settings):
@@ -187,7 +150,6 @@ def variance_batch_ltl(data, training_settings):
         #####################################################
         # Test
         # Measure the test error after every training task for the shake of pretty plots at the end
-        current_test_errors = []
         for test_task_idx in range(len(data.test_tasks)):
             x_train = data.test_tasks[test_task_idx].training.features
             y_train = data.test_tasks[test_task_idx].training.labels
@@ -197,12 +159,11 @@ def variance_batch_ltl(data, training_settings):
             y_test = data.test_tasks[test_task_idx].test.labels
 
             test_perf = mean_squared_error(y_test, x_test @ w)
-            current_test_errors.append(test_perf)
-        test_performances.append(np.mean(current_test_errors))
+            test_performances.append(test_perf)
 
         validation_curve.append(validation_performance)
 
-        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5f} | test MSE: {test_perf:8.5f} | norm h: {norm(best_mean_vector):4.2f}')
+        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5f} | test MSE: {np.mean(test_performances):8.5f} | norm h: {norm(best_mean_vector):4.2f}')
         # best_h = np.average(all_h, axis=0)
 
         if validation_performance < best_val_performance:
@@ -216,8 +177,7 @@ def variance_batch_ltl(data, training_settings):
             best_mean_vector = mean_vector
             best_test_performances = test_performances
 
-    print(best_mean_vector)
     results = {'best_mean_vector': best_mean_vector,
-               'best_test_performances': best_test_performances}
+               'best_test_performance': np.mean(best_test_performances)}
     return results
 

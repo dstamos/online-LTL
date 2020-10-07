@@ -17,13 +17,11 @@ def itl(data, training_settings):
         x_val = data.test_tasks[task_idx].validation.features
         y_val = data.test_tasks[task_idx].validation.labels
 
-        validation_curve = []
         for regularization_parameter in training_settings['regularization_parameter_range']:
             #####################################################
             # Optimisation
             curr_w = pinv(x_train.T @ x_train + regularization_parameter * eye(dims)) @ x_train.T @ y_train
 
-            train_performance = mean_squared_error(y_train, x_train @ curr_w)
             #####################################################
             # Validation
             val_performance = mean_squared_error(y_val, x_val @ curr_w)
@@ -37,7 +35,6 @@ def itl(data, training_settings):
                 best_val_performance = val_performance
 
                 best_weight_vectors[task_idx] = curr_w
-                validation_curve.append(val_performance)
 
                 best_regularization_parameter = regularization_parameter
                 best_val_perf = val_performance
@@ -51,6 +48,6 @@ def itl(data, training_settings):
         test_perfomances[task_idx] = mean_squared_error(y_test, x_test @ best_weight_vectors[task_idx])
     print('final test MSE: %8.5f' % (np.mean(test_perfomances)))
 
-    results = {'test_perfomances': np.mean(test_perfomances)}
+    results = {'test_perfomance': np.mean(test_perfomances)}
 
     return results

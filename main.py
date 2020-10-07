@@ -57,27 +57,29 @@ def main():
 
     data = DataHandler(data_settings, all_features, all_labels)
 
-    # training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 36)],
-    #                      'method': 'ITL'}
+    training_settings_itl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 36)],
+                             'method': 'ITL'}
 
-    # training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-1, 0.3, 36)],
-    #                      'method': 'batch_LTL'}
-    #
-    training_settings = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-2, 0.3, 8)],
-                         'step_size': 1e+3,
-                         'method': 'online_LTL'}
+    results_itl = training(data, training_settings_itl)
+    ###########
+    training_settings_batch_ltl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-1, 0.3, 36)],
+                                   'method': 'batch_LTL'}
 
-    # TODO What is the exact interaction that breaks online ltl when the regul param is large?
-    # TODO Rework the training to have .fit .predict
-    # done Finish online ltl
-    #
-    # training_settings = {'regularization_parameter': 1e-2,
-    #                      'method': 'MTL'}
+    results_batch_ltl = training(data, training_settings_batch_ltl)
+    ###########
+    training_settings_online_ltl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-2, 0.3, 8)],
+                                    'step_size': 1e+3,
+                                    'method': 'online_LTL'}
 
-    training(data, training_settings)
-    print('ground truth')
-    print(common_mean)
+    results_online_ltl = training(data, training_settings_online_ltl)
 
+    import matplotlib.pyplot as plt
+    plt.axhline(y=results_itl['test_perfomance'], xmin=0, xmax=len(all_features)-1, color='k', label='indipendent learning')
+    plt.axhline(y=results_batch_ltl['best_test_performance'], xmin=0, xmax=len(all_features)-1, color='tab:red', label='batch ltl')
+    plt.plot(results_online_ltl['best_test_performances'], color='tab:blue', label='online ltl')
+    plt.xlabel('number of training tasks')
+    plt.ylabel('performanance')
+    plt.pause(0.1)
     print('done')
 
 
