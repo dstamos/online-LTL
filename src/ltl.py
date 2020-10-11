@@ -86,10 +86,11 @@ def solve_wrt_h(h, x, y, param, step_size_bit, curr_iteration=0, inner_iter_cap=
         return 2 * param**2 * n * x.T @ matrix_power(pinv(x @ x.T + param * n * np.eye(n)), 2) @ ((x @ curr_h).ravel() - y)
 
     i = 0
+    curr_iteration = curr_iteration * inner_iter_cap
     while i < inner_iter_cap:
         i = i + 1
         prev_h = h
-        curr_iteration = curr_iteration + i
+        curr_iteration = curr_iteration + 1
         step_size = np.sqrt(2) * step_size_bit / ((step_size_bit + 1) * np.sqrt(curr_iteration))
         h = prev_h - step_size * grad(prev_h)
 
