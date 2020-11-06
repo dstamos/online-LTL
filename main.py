@@ -58,7 +58,7 @@ def main():
     print('ITL')
     data = DataHandler(data_settings, all_features, all_labels)
 
-    training_settings_itl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 100)],
+    training_settings_itl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 20)],
                              'method': 'ITL'}
 
     results_itl = training(data, training_settings_itl)
@@ -70,7 +70,7 @@ def main():
     # results_batch_ltl = training(data, training_settings_batch_ltl)
     ###########
     print('\nOnline LTL')
-    training_settings_online_ltl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 30)],
+    training_settings_online_ltl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 20)],
                                     'step_size': 1e+3,
                                     'method': 'online_LTL'}
 
