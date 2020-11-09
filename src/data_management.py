@@ -18,7 +18,7 @@ class DataHandler:
             a list of y vectors of length n_tasks (each y vector: (n_points,))
         """
         self.settings = settings
-        self.dims = all_features[0].shape[1 ]
+        self.dims = all_features[0].shape[1]
 
         # Split the tasks _indexes_ into training/validation/test
         training_tasks_pct = settings['training_tasks_pct']

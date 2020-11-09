@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.linalg.linalg import norm, pinv, matrix_power
 from sklearn.metrics import mean_squared_error
+from sklearn.base import BaseEstimator
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 
 def variance_online_ltl(data, training_settings):
@@ -83,7 +85,7 @@ def solve_wrt_h(h, x, y, param, step_size_bit, curr_iteration=0, inner_iter_cap=
     n = len(y)
 
     def grad(curr_h):
-        return 2 * param**2 * n * x.T @ matrix_power(pinv(x @ x.T + param * n * np.eye(n)), 2) @ ((x @ curr_h).ravel() - y)
+        return 2 * param ** 2 * n * x.T @ matrix_power(pinv(x @ x.T + param * n * np.eye(n)), 2) @ ((x @ curr_h).ravel() - y)
 
     i = 0
     curr_iteration = curr_iteration * inner_iter_cap
@@ -107,80 +109,129 @@ def solve_wrt_w(h, x, y, param):
     return w
 
 
-def variance_batch_ltl(data, training_settings):
-    dims = data.dims
-    best_val_performance = np.Inf
+class BiasLTL(BaseEstimator):
+    def __init__(self, regularization_parameter=1e-2, step_size_bit=1e+3, keep_all_metaparameters=True):
+        self.keep_all_metaparameters = keep_all_metaparameters
+        self.regularization_parameter = regularization_parameter
+        self.step_size_bit = step_size_bit
+        self.all_metaparameters_ = None
+        self.metaparameter_ = None
 
-    validation_curve = []
-    for regularization_parameter in training_settings['regularization_parameter_range']:
-        validation_performances = []
-        test_performances = []
+    def fit(self, all_features, all_labels, extra_inputs=None):
+        extra_inputs = self._check_extra_inputs(extra_inputs)
 
-        #####################################################
-        # Optimisation
-        a_matrix = np.zeros((dims, dims))
-        b = np.zeros(dims)
-        n_training_tasks = len(data.training_tasks)
-        for task_idx in range(n_training_tasks):
-            x_train = data.training_tasks[task_idx].training.features
-            y_train = data.training_tasks[task_idx].training.labels
-            n = len(y_train)
+        all_features, all_labels = check_X_y(all_features, all_labels)
 
-            g_matrix = pinv(x_train @ x_train.T + n * regularization_parameter * np.eye(n))
+        mean_vector = np.random.randn(all_features.shape[1]) / norm(np.random.randn(all_features.shape[1]))
+        all_features, all_labels = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'], all_labels)
 
-            a_matrix = a_matrix + x_train.T @ g_matrix @ g_matrix @ x_train
-            b = b + x_train.T @ g_matrix @ y_train
-        a_matrix = 1 / n_training_tasks * a_matrix
-        b = 1 / n_training_tasks * b
-        mean_vector = pinv(a_matrix) @ b
+        all_metaparameters = [None] * len(all_features)
+        for task_idx in range(len(all_features)):
+            mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=task_idx, inner_iter_cap=3)
+            all_metaparameters[task_idx] = mean_vector
+        self.all_metaparameters_ = all_metaparameters
+        self.metaparameter_ = mean_vector
 
-        #####################################################
-        # Validation
-        # Validation only needs to be measured at the very end, after we've trained on all training tasks
-        for validation_task_idx in range(len(data.validation_tasks)):
-            x_train = data.validation_tasks[validation_task_idx].training.features
-            y_train = data.validation_tasks[validation_task_idx].training.labels
-            w = solve_wrt_w(mean_vector, x_train, y_train, regularization_parameter)
+    def fit_inner(self, all_features, all_labels=None, extra_inputs=None):
+        extra_inputs = self._check_extra_inputs(extra_inputs)
 
-            x_test = data.validation_tasks[validation_task_idx].test.features
-            y_test = data.validation_tasks[validation_task_idx].test.labels
-
-            validation_perf = mean_squared_error(y_test, x_test @ w)
-            validation_performances.append(validation_perf)
-        validation_performance = np.mean(validation_performances)
-
-        #####################################################
-        #####################################################
-        # Test
-        # Measure the test error after every training task for the shake of pretty plots at the end
-        for test_task_idx in range(len(data.test_tasks)):
-            x_train = data.test_tasks[test_task_idx].training.features
-            y_train = data.test_tasks[test_task_idx].training.labels
-            w = solve_wrt_w(mean_vector, x_train, y_train, regularization_parameter)
-
-            x_test = data.test_tasks[test_task_idx].test.features
-            y_test = data.test_tasks[test_task_idx].test.labels
-
-            test_perf = mean_squared_error(y_test, x_test @ w)
-            test_performances.append(test_perf)
-
-        validation_curve.append(validation_performance)
-
-        print(f'lambda: {regularization_parameter:6e} | val MSE: {validation_performance:8.5e} | test MSE: {np.mean(test_performances):8.5e}')
-        # best_h = np.average(all_h, axis=0)
-
-        if validation_performance < best_val_performance:
-            validation_criterion = True
+        check_is_fitted(self)
+        if all_labels is None:
+            all_features = check_array(all_features)
+            all_features = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'])
         else:
-            validation_criterion = False
+            all_features, all_labels = check_X_y(all_features, all_labels)
+            all_features, all_labels = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'], all_labels)
 
-        if validation_criterion:
-            best_val_performance = validation_performance
+        if extra_inputs['predictions_for_each_training_task'] is False:
+            weight_vectors_per_task = [None] * len(all_features)
+            for task_idx in range(len(all_features)):
+                if all_labels is None:
+                    w = self.metaparameter_
+                else:
+                    w = self.solve_wrt_w(self.metaparameter_, all_features[task_idx], all_labels[task_idx])
+                weight_vectors_per_task[task_idx] = w
+            return weight_vectors_per_task
+        else:
+            weight_vectors_per_metaparameter = [None] * len(self.all_metaparameters_)
+            for metaparam_idx in range(len(self.all_metaparameters_)):
+                weight_vectors_per_task = [None] * len(all_features)
+                for task_idx in range(len(all_features)):
+                    if all_labels is None:
+                        w = self.metaparameter_
+                    else:
+                        w = self.solve_wrt_w(self.metaparameter_, all_features[task_idx], all_labels[task_idx])
+                    weight_vectors_per_task[task_idx] = w
+                weight_vectors_per_metaparameter[metaparam_idx] = weight_vectors_per_task
+            return weight_vectors_per_metaparameter
 
-            best_mean_vector = mean_vector
-            best_test_performances = test_performances
+    def predict(self, all_features, weight_vectors,  extra_inputs=None):
+        extra_inputs = self._check_extra_inputs(extra_inputs)
 
-    results = {'best_mean_vector': best_mean_vector,
-               'best_test_performance': np.mean(best_test_performances)}
-    return results
+        all_features = check_array(all_features)
+        all_features = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'])
+        assert len(all_features) == len(weight_vectors), 'The number of weight vectors passed is not equal to the number of tasks.'
 
+        if extra_inputs['predictions_for_each_training_task'] is False:
+            all_predictions = []
+            for task_idx in range(len(all_features)):
+                pred = np.matmul(all_features[task_idx], weight_vectors[task_idx])
+                all_predictions.append(pred)
+            return all_predictions
+        else:
+            if self.all_metaparameters_ is None:
+                raise ValueError('Not all metaparameters were saved. Refit with ')
+            all_predictions = []
+            for task_idx in range(len(all_features)):
+                pred = np.matmul(all_features[task_idx], weight_vectors[task_idx])
+                all_predictions.append(pred)
+            return all_predictions
+
+    def solve_wrt_metaparameter(self, h, x, y, curr_iteration=0, inner_iter_cap=10):
+        n = len(y)
+
+        def grad(curr_h):
+            return 2 * self.regularization_parameter ** 2 * n * x.T @ matrix_power(pinv(x @ x.T + self.regularization_parameter * n * np.eye(n)), 2) @ ((x @ curr_h).ravel() - y)
+
+        i = 0
+        curr_iteration = curr_iteration * inner_iter_cap
+        while i < inner_iter_cap:
+            i = i + 1
+            prev_h = h
+            curr_iteration = curr_iteration + 1
+            step_size = np.sqrt(2) * self.step_size_bit / ((self.step_size_bit + 1) * np.sqrt(curr_iteration))
+            h = prev_h - step_size * grad(prev_h)
+        return h
+
+    def solve_wrt_w(self, h, x, y):
+        n = len(y)
+        dims = x.shape[1]
+        c_n_lambda = x.T @ x / n + self.regularization_parameter * np.eye(dims)
+        w = pinv(c_n_lambda) @ (x.T @ y / n + self.regularization_parameter * h).ravel()
+
+        return w
+
+    @staticmethod
+    def _split_tasks(all_features, indexes, all_labels=None):
+        # Split the blob/array of features into a list of tasks based on point_indexes_per_task
+        all_features = [all_features[indexes == task_idx] for task_idx in np.unique(indexes)]
+        if all_labels is None:
+            return all_features
+        all_labels = [all_labels[indexes == task_idx] for task_idx in np.unique(indexes)]
+        return all_features, all_labels
+
+    @staticmethod
+    def _check_extra_inputs(extra_inputs):
+        if extra_inputs is None:
+            extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': None}
+        if extra_inputs['point_indexes_per_task'] is None:
+            raise ValueError("The vector point_indexes_per_task of task idendifiers is necessary.")
+        return extra_inputs
+
+# def metalearning_mse(all_labels, all_predictions, task_indexes):
+#     error = None
+#     return error
+#
+#
+# from sklearn.metrics import make_scorer
+# make_scorer(metalearning_mse, greater_is_better=False, needs_proba=False, needs_threshold=False)
