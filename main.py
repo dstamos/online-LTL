@@ -34,10 +34,10 @@ def main():
     all_features = []
     all_labels = []
     common_mean = 5 * np.random.randn(dims)
-    # n_points = 60
+    n_points = 300
     for task_idx in range(n_tasks):
         # Total number of points for the current task.
-        n_points = np.random.randint(low=100, high=150)
+        # n_points = np.random.randint(low=100, high=150)
 
         # Generating and normalizing the data.
         features = np.random.randn(n_points, dims)
@@ -54,9 +54,8 @@ def main():
     ########################################################################
     ########################################################################
 
-    from src.ltl import BiasLTL
+    from src.ltl import BiasLTL, metalearning_mse
     from sklearn.model_selection import train_test_split
-    from sklearn.metrics import mean_squared_error
 
     training_tasks_pct = data_settings['training_tasks_pct']
     validation_tasks_pct = data_settings['validation_tasks_pct']
@@ -64,9 +63,7 @@ def main():
     training_tasks_indexes, temp_indexes = train_test_split(range(len(all_features)), test_size=1 - training_tasks_pct, shuffle=True)
     validation_tasks_indexes, test_tasks_indexes = train_test_split(temp_indexes, test_size=test_tasks_pct / (test_tasks_pct + validation_tasks_pct))
 
-    """
-    Optimize metaparameter on the training data of the training tasks
-    """
+    # Training task data
     training_tasks_training_features = [all_features[i] for i in training_tasks_indexes]
     training_tasks_training_labels = [all_labels[i] for i in training_tasks_indexes]
     point_indexes_per_training_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(training_tasks_indexes)]
@@ -75,6 +72,33 @@ def main():
     training_tasks_training_labels = np.concatenate(training_tasks_training_labels)
     point_indexes_per_training_task = np.concatenate(point_indexes_per_training_task).astype(int)
 
+    # Validation task data
+    validation_tasks_training_features = [all_features[i] for i in validation_tasks_indexes]
+    validation_tasks_training_labels = [all_labels[i] for i in validation_tasks_indexes]
+    point_indexes_per_validation_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(validation_tasks_indexes)]
+
+    validation_tasks_training_features = np.concatenate(validation_tasks_training_features)
+    validation_tasks_training_labels = np.concatenate(validation_tasks_training_labels)
+    point_indexes_per_validation_task = np.concatenate(point_indexes_per_validation_task).astype(int)
+
+    validation_tasks_test_features = [all_features[i] for i in validation_tasks_indexes]
+    validation_tasks_test_labels = [all_labels[i] for i in validation_tasks_indexes]
+    validation_tasks_test_features = np.concatenate(validation_tasks_test_features)
+    # Test task data
+    test_tasks_training_features = [all_features[i] for i in test_tasks_indexes]
+    test_tasks_training_labels = [all_labels[i] for i in test_tasks_indexes]
+    point_indexes_per_test_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(test_tasks_indexes)]
+
+    test_tasks_training_features = np.concatenate(test_tasks_training_features)
+    test_tasks_training_labels = np.concatenate(test_tasks_training_labels)
+    point_indexes_per_test_task = np.concatenate(point_indexes_per_test_task).astype(int)
+
+    test_tasks_test_features = [all_features[i] for i in test_tasks_indexes]
+    test_tasks_test_labels = [all_labels[i] for i in test_tasks_indexes]
+    test_tasks_test_features = np.concatenate(test_tasks_test_features)
+    """
+    Optimize metaparameter on the training data of the training tasks
+    """
     model_ltl = BiasLTL(regularization_parameter=1e-1, step_size_bit=1e+3)
     model_ltl.fit(training_tasks_training_features, training_tasks_training_labels, {'point_indexes_per_task': point_indexes_per_training_task})
 
@@ -82,50 +106,41 @@ def main():
     Optimize the weight vectors on the training data of the target tasks (those should be training data from the validation or test tasks)
     Passing predictions_for_each_training_task as True, recovers the weight vectors for each metaparameter that was returned during the training (one for each training task).        
     """
-    validation_tasks_training_features = [all_features[i] for i in validation_tasks_indexes]
-    validation_tasks_training_labels = [all_labels[i] for i in validation_tasks_indexes]
-    point_indexes_per_validation_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(validation_tasks_indexes)]
-
-    # Checking performance on validation tasks
-    validation_tasks_training_features = np.concatenate(validation_tasks_training_features)
-    validation_tasks_training_labels = np.concatenate(validation_tasks_training_labels)
-    point_indexes_per_validation_task = np.concatenate(point_indexes_per_validation_task).astype(int)
-
-    extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': point_indexes_per_validation_task}
-
+    extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': point_indexes_per_validation_task}
     weight_vectors_per_task = model_ltl.fit_inner(validation_tasks_training_features,
                                                   all_labels=validation_tasks_training_labels,
                                                   extra_inputs=extra_inputs)
     """
     Take the weight vectors from the previous step and make predictions on the test data of the same tasks you optimized them on
     """
-    validation_tasks_test_features = [all_features[i] for i in validation_tasks_indexes]
-    validation_tasks_test_labels = [all_labels[i] for i in validation_tasks_indexes]
 
-    validation_tasks_test_features = np.concatenate(validation_tasks_test_features)
     predictions_validation = model_ltl.predict(validation_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
-
-    def metalearning_mse(all_true_labels, all_predictions, error_progression=False):
-        if error_progression is False:
-            performances = []
-            for idx in range(len(all_true_labels)):
-                curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[idx])
-                performances.append(curr_perf)
-            performance = np.mean(performances)
-            return performance
-        else:
-            all_performances = []
-            for metamodel_idx in range(len(all_predictions)):
-                metamodel_performances = []
-                for idx in range(len(all_true_labels)):
-                    curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[metamodel_idx][idx])
-                    metamodel_performances.append(curr_perf)
-                curr_metamodel_performance = np.mean(metamodel_performances)
-                all_performances.append(curr_metamodel_performance)
-            return all_performances
 
     val_performance = metalearning_mse(validation_tasks_test_labels, predictions_validation, extra_inputs['predictions_for_each_training_task'])
     print(val_performance)
+
+    """
+    Optimize the weight vectors on the training data of the target tasks (those should be training data from the validation or test tasks)
+    Passing predictions_for_each_training_task as True, recovers the weight vectors for each metaparameter that was returned during the training (one for each training task).        
+    """
+    extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': point_indexes_per_test_task}
+    weight_vectors_per_task = model_ltl.fit_inner(test_tasks_training_features,
+                                                  all_labels=test_tasks_training_labels,
+                                                  extra_inputs=extra_inputs)
+    """
+    Take the weight vectors from the previous step and make predictions on the test data of the same tasks you optimized them on
+    """
+
+    predictions_test = model_ltl.predict(test_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
+
+    test_performance = metalearning_mse(test_tasks_test_labels, predictions_test, extra_inputs['predictions_for_each_training_task'])
+    print(test_performance)
+
+    import matplotlib.pyplot as plt
+    plt.plot(test_performance)
+    plt.show()
+
+
 
     ###########
     training_settings_itl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 20)],
