@@ -1,15 +1,22 @@
-# from numpy.linalg import norm
-#
-#
-# def mean_squared_error(data_settings, x, y_true, w, task_indeces):
-#     n_tasks = len(task_indeces)
-#     mse = 0
-#     for _, task_idx in enumerate(task_indeces):
-#         n_points = len(y_true[task_idx])
-#         pred = X[task_idx] @ W[:, task_idx]
-#
-#         mse_temp = norm(y_true[task_idx].ravel() - pred) ** 2 / n_points
-#         mse = mse + mse_temp
-#
-#     performance = mse / n_tasks
-#     return performance
+from sklearn.metrics import mean_squared_error
+import numpy as np
+
+
+def multiple_tasks_mse(all_true_labels, all_predictions, error_progression=False):
+    if error_progression is False:
+        performances = []
+        for idx in range(len(all_true_labels)):
+            curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[idx])
+            performances.append(curr_perf)
+        performance = np.mean(performances)
+        return performance
+    else:
+        all_performances = []
+        for metamodel_idx in range(len(all_predictions)):
+            metamodel_performances = []
+            for idx in range(len(all_true_labels)):
+                curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[metamodel_idx][idx])
+                metamodel_performances.append(curr_perf)
+            curr_metamodel_performance = np.mean(metamodel_performances)
+            all_performances.append(curr_metamodel_performance)
+        return all_performances

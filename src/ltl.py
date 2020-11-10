@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.linalg.linalg import norm, pinv, matrix_power
-from sklearn.metrics import mean_squared_error
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
@@ -129,23 +128,3 @@ class BiasLTL(BaseEstimator):
         if extra_inputs['point_indexes_per_task'] is None:
             raise ValueError("The vector point_indexes_per_task of task idendifiers is necessary.")
         return extra_inputs
-
-
-def metalearning_mse(all_true_labels, all_predictions, error_progression=False):
-    if error_progression is False:
-        performances = []
-        for idx in range(len(all_true_labels)):
-            curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[idx])
-            performances.append(curr_perf)
-        performance = np.mean(performances)
-        return performance
-    else:
-        all_performances = []
-        for metamodel_idx in range(len(all_predictions)):
-            metamodel_performances = []
-            for idx in range(len(all_true_labels)):
-                curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[metamodel_idx][idx])
-                metamodel_performances.append(curr_perf)
-            curr_metamodel_performance = np.mean(metamodel_performances)
-            all_performances.append(curr_metamodel_performance)
-        return all_performances

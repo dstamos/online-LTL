@@ -28,13 +28,13 @@ def main():
     ########################################################################
     # This chunk is hardcoded as an example of the structure the data should have.
     # A list of all the features and labels for all tasks basically
-    n_tasks = 100
+    n_tasks = 300
     dims = 10
     noise = 0.5
     all_features = []
     all_labels = []
     common_mean = 5 * np.random.randn(dims)
-    n_points = 300
+    n_points = 60
     for task_idx in range(n_tasks):
         # Total number of points for the current task.
         # n_points = np.random.randint(low=100, high=150)
@@ -54,7 +54,8 @@ def main():
     ########################################################################
     ########################################################################
 
-    from src.ltl import BiasLTL, metalearning_mse
+    from src.ltl import BiasLTL
+    from src.utilities import multiple_tasks_mse
     from sklearn.model_selection import train_test_split
 
     training_tasks_pct = data_settings['training_tasks_pct']
@@ -116,7 +117,7 @@ def main():
 
     predictions_validation = model_ltl.predict(validation_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
 
-    val_performance = metalearning_mse(validation_tasks_test_labels, predictions_validation, extra_inputs['predictions_for_each_training_task'])
+    val_performance = multiple_tasks_mse(validation_tasks_test_labels, predictions_validation, extra_inputs['predictions_for_each_training_task'])
     print(val_performance)
 
     """
@@ -133,11 +134,32 @@ def main():
 
     predictions_test = model_ltl.predict(test_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
 
-    test_performance = metalearning_mse(test_tasks_test_labels, predictions_test, extra_inputs['predictions_for_each_training_task'])
-    print(test_performance)
+    ltl_test_performance = multiple_tasks_mse(test_tasks_test_labels, predictions_test, extra_inputs['predictions_for_each_training_task'])
+    print(ltl_test_performance)
+
+    ###################################################################################################
+    from src.independent_learning import ITL
+
+    extra_inputs = {'point_indexes_per_task': point_indexes_per_test_task}
+
+    model_itl = ITL(regularization_parameter=1e-6)
+    model_itl.fit(test_tasks_training_features, test_tasks_training_labels, extra_inputs=extra_inputs)
+
+    predictions_validation = model_itl.predict(test_tasks_test_features, extra_inputs=extra_inputs)
+
+    val_performance = multiple_tasks_mse(test_tasks_test_labels, predictions_validation)
+    print(val_performance)
+
+    predictions_test = model_itl.predict(test_tasks_test_features, extra_inputs=extra_inputs)
+
+    itl_test_performance = multiple_tasks_mse(test_tasks_test_labels, predictions_test)
+    print(itl_test_performance)
+
+    ###################################################################################################
 
     import matplotlib.pyplot as plt
-    plt.plot(test_performance)
+    plt.plot(ltl_test_performance, color='tab:red', label='BiasLTL')
+    plt.axhline(y=itl_test_performance, xmin=0, xmax=len(ltl_test_performance)-1, color='tab:blue', label='ITL')
     plt.show()
 
 

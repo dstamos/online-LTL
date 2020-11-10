@@ -1,5 +1,4 @@
 from src.independent_learning import itl
-from src.ltl import variance_online_ltl
 
 
 def training(data, training_settings):
@@ -9,6 +8,6 @@ def training(data, training_settings):
         results = itl(data, training_settings)
 
     elif method == 'online_LTL':
-        results = variance_online_ltl(data, training_settings)
+        pass
 
     return results
