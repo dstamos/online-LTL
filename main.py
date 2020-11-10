@@ -28,7 +28,7 @@ def main():
     ########################################################################
     # This chunk is hardcoded as an example of the structure the data should have.
     # A list of all the features and labels for all tasks basically
-    n_tasks = 40
+    n_tasks = 100
     dims = 10
     noise = 0.5
     all_features = []
@@ -54,16 +54,19 @@ def main():
     ########################################################################
     ########################################################################
 
-    # print('ITL')
-    # data = DataHandler(data_settings, all_features, all_labels)
-
+    from src.ltl import BiasLTL
     from sklearn.model_selection import train_test_split
+    from sklearn.metrics import mean_squared_error
+
     training_tasks_pct = data_settings['training_tasks_pct']
     validation_tasks_pct = data_settings['validation_tasks_pct']
     test_tasks_pct = data_settings['test_tasks_pct']
     training_tasks_indexes, temp_indexes = train_test_split(range(len(all_features)), test_size=1 - training_tasks_pct, shuffle=True)
     validation_tasks_indexes, test_tasks_indexes = train_test_split(temp_indexes, test_size=test_tasks_pct / (test_tasks_pct + validation_tasks_pct))
 
+    """
+    Optimize metaparameter on the training data of the training tasks
+    """
     training_tasks_training_features = [all_features[i] for i in training_tasks_indexes]
     training_tasks_training_labels = [all_labels[i] for i in training_tasks_indexes]
     point_indexes_per_training_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(training_tasks_indexes)]
@@ -72,13 +75,13 @@ def main():
     training_tasks_training_labels = np.concatenate(training_tasks_training_labels)
     point_indexes_per_training_task = np.concatenate(point_indexes_per_training_task).astype(int)
 
-    from src.ltl import BiasLTL
-
-    # Optimizing metaparameters
-    model_ltl = BiasLTL(regularization_parameter=1e-4, step_size_bit=1e+4)
+    model_ltl = BiasLTL(regularization_parameter=1e-1, step_size_bit=1e+3)
     model_ltl.fit(training_tasks_training_features, training_tasks_training_labels, {'point_indexes_per_task': point_indexes_per_training_task})
 
-    #############################################################################################################################
+    """
+    Optimize the weight vectors on the training data of the target tasks (those should be training data from the validation or test tasks)
+    Passing predictions_for_each_training_task as True, recovers the weight vectors for each metaparameter that was returned during the training (one for each training task).        
+    """
     validation_tasks_training_features = [all_features[i] for i in validation_tasks_indexes]
     validation_tasks_training_labels = [all_labels[i] for i in validation_tasks_indexes]
     point_indexes_per_validation_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(validation_tasks_indexes)]
@@ -87,56 +90,49 @@ def main():
     validation_tasks_training_features = np.concatenate(validation_tasks_training_features)
     validation_tasks_training_labels = np.concatenate(validation_tasks_training_labels)
     point_indexes_per_validation_task = np.concatenate(point_indexes_per_validation_task).astype(int)
+
+    extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': point_indexes_per_validation_task}
+
     weight_vectors_per_task = model_ltl.fit_inner(validation_tasks_training_features,
                                                   all_labels=validation_tasks_training_labels,
-                                                  extra_inputs={'predictions_for_each_training_task': False,
-                                                                'point_indexes_per_task': point_indexes_per_validation_task})
-    #############################################################################################################################
+                                                  extra_inputs=extra_inputs)
+    """
+    Take the weight vectors from the previous step and make predictions on the test data of the same tasks you optimized them on
+    """
     validation_tasks_test_features = [all_features[i] for i in validation_tasks_indexes]
     validation_tasks_test_labels = [all_labels[i] for i in validation_tasks_indexes]
-    point_indexes_per_validation_task = [idx * np.ones(all_features[task_idx].shape[0]) for idx, task_idx in enumerate(validation_tasks_indexes)]
 
     validation_tasks_test_features = np.concatenate(validation_tasks_test_features)
-    point_indexes_per_validation_task = np.concatenate(point_indexes_per_validation_task).astype(int)
-    predictions = model_ltl.predict(validation_tasks_test_features, weight_vectors_per_task,
-                                    extra_inputs={'predictions_for_each_training_task': False,
-                                                  'point_indexes_per_task': point_indexes_per_validation_task})
+    predictions_validation = model_ltl.predict(validation_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
 
-    # from sklearn.model_selection import GridSearchCV
-    from sklearn.metrics import make_scorer
+    def metalearning_mse(all_true_labels, all_predictions, error_progression=False):
+        if error_progression is False:
+            performances = []
+            for idx in range(len(all_true_labels)):
+                curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[idx])
+                performances.append(curr_perf)
+            performance = np.mean(performances)
+            return performance
+        else:
+            all_performances = []
+            for metamodel_idx in range(len(all_predictions)):
+                metamodel_performances = []
+                for idx in range(len(all_true_labels)):
+                    curr_perf = mean_squared_error(all_true_labels[idx], all_predictions[metamodel_idx][idx])
+                    metamodel_performances.append(curr_perf)
+                curr_metamodel_performance = np.mean(metamodel_performances)
+                all_performances.append(curr_metamodel_performance)
+            return all_performances
 
-    def metalearning_mse(all_labels, all_predictions, point_indexes_per_task=None):
-        if point_indexes_per_task is None:
-            raise ValueError("Required input task_indexes not passed.")
+    val_performance = metalearning_mse(validation_tasks_test_labels, predictions_validation, extra_inputs['predictions_for_each_training_task'])
+    print(val_performance)
 
-        # Take lists and return errors
-        error = None
-        return error
-
-    metalearning_mse = make_scorer(metalearning_mse, greater_is_better=False, needs_proba=False, needs_threshold=False, point_indexes_per_task=point_indexes_per_training_task)
-    # Extra temporary column used as task identifier
-    features = np.append(features, task_idx * np.ones((features.shape[0], 1)), axis=1)
-    #
-    all_features = np.concatenate(all_features)
-    all_labels = np.concatenate(all_labels)
-
+    ###########
     training_settings_itl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 20)],
                              'method': 'ITL'}
 
     results_itl = training(data, training_settings_itl)
     ###########
-    # print('\nBatch LTL')
-    # training_settings_batch_ltl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 30)],
-    #                                'method': 'batch_LTL'}
-    #
-    # results_batch_ltl = training(data, training_settings_batch_ltl)
-    ###########
-    print('\nOnline LTL')
-    training_settings_online_ltl = {'regularization_parameter_range': [10 ** float(i) for i in np.linspace(-12, 4, 20)],
-                                    'step_size': 1e+3,
-                                    'method': 'online_LTL'}
-
-    results_online_ltl = training(data, training_settings_online_ltl)
 
     import matplotlib.pyplot as plt
     plt.axhline(y=results_itl['test_perfomance'], xmin=0, xmax=len(all_features) - 1, color='k', label='indipendent learning')
