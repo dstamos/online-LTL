@@ -1,7 +1,9 @@
 import numpy as np
 from numpy.linalg.linalg import norm
-from src.data_management import DataHandler
-from src.training import training
+from src.ltl import BiasLTL
+from src.utilities import multiple_tasks_mse
+from src.data_management import split_data
+from src.data_management import concatenate_data
 
 
 def main():
@@ -54,51 +56,59 @@ def main():
     ########################################################################
     ########################################################################
 
-    from src.ltl import BiasLTL
-    from src.utilities import multiple_tasks_mse
-
-    from src.data_management import split_data
     data = split_data(all_features, all_labels, data_settings)
 
     # Training
     model_ltl = BiasLTL(regularization_parameter=1e-1, step_size_bit=1e+3)
-    model_ltl.fit(data['training_tasks_training_features'], data['training_tasks_training_labels'], {'point_indexes_per_task': data['point_indexes_per_training_task']})
+    training_tasks_training_features, training_tasks_training_labels, point_indexes_per_training_task = concatenate_data(data['training_tasks_training_features'], data['training_tasks_training_labels'])
+    model_ltl.fit(training_tasks_training_features, training_tasks_training_labels, {'point_indexes_per_task': point_indexes_per_training_task})
 
     # Validation
-    extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': data['point_indexes_per_validation_task']}
-    weight_vectors_per_task = model_ltl.fit_inner(data['validation_tasks_training_features'],
-                                                  all_labels=data['validation_tasks_training_labels'],
+    validation_tasks_training_features, validation_tasks_training_labels, point_indexes_per_validation_task = concatenate_data(data['validation_tasks_training_features'], data['validation_tasks_training_labels'])
+    extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': point_indexes_per_validation_task}
+    weight_vectors_per_task = model_ltl.fit_inner(validation_tasks_training_features,
+                                                  all_labels=validation_tasks_training_labels,
                                                   extra_inputs=extra_inputs)
-    predictions_validation = model_ltl.predict(data['validation_tasks_test_features'], weight_vectors_per_task, extra_inputs=extra_inputs)
+
+    validation_tasks_test_features, _, point_indexes_per_validation_task = concatenate_data(data['validation_tasks_test_features'], data['validation_tasks_test_labels'])
+    extra_inputs['point_indexes_per_task'] = point_indexes_per_validation_task
+    predictions_validation = model_ltl.predict(validation_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
 
     val_performance = multiple_tasks_mse(data['validation_tasks_test_labels'], predictions_validation, extra_inputs['predictions_for_each_training_task'])
     print(val_performance)
 
     # Test
-    extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': data['point_indexes_per_test_task']}
-    weight_vectors_per_task = model_ltl.fit_inner(data['test_tasks_training_features'],
-                                                  all_labels=data['test_tasks_training_labels'],
+    test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
+    extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': point_indexes_per_test_task}
+    weight_vectors_per_task = model_ltl.fit_inner(test_tasks_training_features,
+                                                  all_labels=test_tasks_training_labels,
                                                   extra_inputs=extra_inputs)
 
-    predictions_test = model_ltl.predict(data['test_tasks_test_features'], weight_vectors_per_task, extra_inputs=extra_inputs)
+    test_tasks_test_features, _, point_indexes_per_test_task = concatenate_data(data['test_tasks_test_features'], data['test_tasks_test_labels'])
+    extra_inputs['point_indexes_per_task'] = point_indexes_per_test_task
+    predictions_test = model_ltl.predict(test_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
 
     ltl_test_performance = multiple_tasks_mse(data['test_tasks_test_labels'], predictions_test, extra_inputs['predictions_for_each_training_task'])
     print(ltl_test_performance)
 
     ###################################################################################################
     from src.independent_learning import ITL
-
-    extra_inputs = {'point_indexes_per_task': data['point_indexes_per_test_task']}
+    test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
+    extra_inputs = {'point_indexes_per_task': point_indexes_per_test_task}
 
     model_itl = ITL(regularization_parameter=1e-6)
-    model_itl.fit(data['test_tasks_training_features'], data['test_tasks_training_labels'], extra_inputs=extra_inputs)
+    model_itl.fit(test_tasks_training_features, test_tasks_training_labels, extra_inputs=extra_inputs)
 
-    predictions_validation = model_itl.predict(data['test_tasks_test_features'], extra_inputs=extra_inputs)
+    test_tasks_validation_features, _, point_indexes_per_test_task = concatenate_data(data['test_tasks_validation_features'], data['test_tasks_validation_labels'])
+    extra_inputs = {'point_indexes_per_task': point_indexes_per_test_task}
+    predictions_validation = model_itl.predict(test_tasks_validation_features, extra_inputs=extra_inputs)
 
-    val_performance = multiple_tasks_mse(data['test_tasks_test_labels'], predictions_validation)
+    val_performance = multiple_tasks_mse(data['test_tasks_validation_labels'], predictions_validation)
     print(val_performance)
 
-    predictions_test = model_itl.predict(data['test_tasks_test_features'], extra_inputs=extra_inputs)
+    test_tasks_test_features, _, point_indexes_per_test_task = concatenate_data(data['test_tasks_test_features'], data['test_tasks_test_labels'])
+    extra_inputs = {'point_indexes_per_task': point_indexes_per_test_task}
+    predictions_test = model_itl.predict(test_tasks_test_features, extra_inputs=extra_inputs)
 
     itl_test_performance = multiple_tasks_mse(data['test_tasks_test_labels'], predictions_test)
     print(itl_test_performance)
