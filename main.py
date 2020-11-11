@@ -56,6 +56,7 @@ def main():
     ########################################################################
     ########################################################################
 
+    # Split the data into training/validation/test tasks.
     data = split_data(all_features, all_labels, data_settings)
 
     # Training
@@ -66,9 +67,7 @@ def main():
     # Validation
     validation_tasks_training_features, validation_tasks_training_labels, point_indexes_per_validation_task = concatenate_data(data['validation_tasks_training_features'], data['validation_tasks_training_labels'])
     extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': point_indexes_per_validation_task}
-    weight_vectors_per_task = model_ltl.fit_inner(validation_tasks_training_features,
-                                                  all_labels=validation_tasks_training_labels,
-                                                  extra_inputs=extra_inputs)
+    weight_vectors_per_task = model_ltl.fit_inner(validation_tasks_training_features, all_labels=validation_tasks_training_labels, extra_inputs=extra_inputs)
 
     validation_tasks_test_features, _, point_indexes_per_validation_task = concatenate_data(data['validation_tasks_test_features'], data['validation_tasks_test_labels'])
     extra_inputs['point_indexes_per_task'] = point_indexes_per_validation_task
@@ -76,13 +75,12 @@ def main():
 
     val_performance = multiple_tasks_mse(data['validation_tasks_test_labels'], predictions_validation, extra_inputs['predictions_for_each_training_task'])
     print(val_performance)
+    # TODO Use val_performance to pick the best regularization_parameter. If predictions_for_each_training_task = True, then val_performance is a list, not a scalar.
 
     # Test
     test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
     extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': point_indexes_per_test_task}
-    weight_vectors_per_task = model_ltl.fit_inner(test_tasks_training_features,
-                                                  all_labels=test_tasks_training_labels,
-                                                  extra_inputs=extra_inputs)
+    weight_vectors_per_task = model_ltl.fit_inner(test_tasks_training_features, all_labels=test_tasks_training_labels, extra_inputs=extra_inputs)
 
     test_tasks_test_features, _, point_indexes_per_test_task = concatenate_data(data['test_tasks_test_features'], data['test_tasks_test_labels'])
     extra_inputs['point_indexes_per_task'] = point_indexes_per_test_task
@@ -92,6 +90,9 @@ def main():
     print(ltl_test_performance)
 
     ###################################################################################################
+    ###################################################################################################
+    ###################################################################################################
+    # Independent learning on the test tasks.
     from src.independent_learning import ITL
     test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
     extra_inputs = {'point_indexes_per_task': point_indexes_per_test_task}
@@ -105,6 +106,7 @@ def main():
 
     val_performance = multiple_tasks_mse(data['test_tasks_validation_labels'], predictions_validation)
     print(val_performance)
+    # TODO Use val_performance to pick the best regularization_parameter.
 
     test_tasks_test_features, _, point_indexes_per_test_task = concatenate_data(data['test_tasks_test_features'], data['test_tasks_test_labels'])
     extra_inputs = {'point_indexes_per_task': point_indexes_per_test_task}
@@ -112,7 +114,8 @@ def main():
 
     itl_test_performance = multiple_tasks_mse(data['test_tasks_test_labels'], predictions_test)
     print(itl_test_performance)
-
+    ###################################################################################################
+    ###################################################################################################
     ###################################################################################################
 
     import matplotlib.pyplot as plt
