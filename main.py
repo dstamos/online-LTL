@@ -60,6 +60,7 @@ def main():
     data = split_data(all_features, all_labels, data_settings)
 
     # Training
+    # TODO Wrap the validation from this point
     model_ltl = BiasLTL(regularization_parameter=1e-1, step_size_bit=1e+3)
     training_tasks_training_features, training_tasks_training_labels, point_indexes_per_training_task = concatenate_data(data['training_tasks_training_features'], data['training_tasks_training_labels'])
     model_ltl.fit(training_tasks_training_features, training_tasks_training_labels, {'point_indexes_per_task': point_indexes_per_training_task})
@@ -75,7 +76,7 @@ def main():
 
     val_performance = multiple_tasks_mse(data['validation_tasks_test_labels'], predictions_validation, extra_inputs['predictions_for_each_training_task'])
     print(val_performance)
-    # TODO Use val_performance to pick the best regularization_parameter. If predictions_for_each_training_task = True, then val_performance is a list, not a scalar.
+    # TODO (to this point) Use val_performance to pick the best regularization_parameter. If predictions_for_each_training_task = True, then val_performance is a list, not a scalar.
 
     # Test
     test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])

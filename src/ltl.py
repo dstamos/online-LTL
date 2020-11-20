@@ -12,7 +12,7 @@ class BiasLTL(BaseEstimator):
         self.all_metaparameters_ = None
         self.metaparameter_ = None
 
-    def     fit(self, all_features, all_labels, extra_inputs=None):
+    def fit(self, all_features, all_labels, extra_inputs=None):
         extra_inputs = self._check_extra_inputs(extra_inputs)
 
         all_features, all_labels = check_X_y(all_features, all_labels)
