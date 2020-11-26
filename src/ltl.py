@@ -33,10 +33,10 @@ class BiasLTL(BaseEstimator):
         check_is_fitted(self)
         if all_labels is None:
             all_features = check_array(all_features)
-            all_features = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'])
+            all_features = self._split_tasks(all_features, extra_inputs['re_train_indexes'])
         else:
             all_features, all_labels = check_X_y(all_features, all_labels)
-            all_features, all_labels = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'], all_labels)
+            all_features, all_labels = self._split_tasks(all_features, extra_inputs['re_train_indexes'], all_labels)
 
         if extra_inputs['predictions_for_each_training_task'] is False:
             weight_vectors_per_task = [None] * len(all_features)
@@ -60,7 +60,8 @@ class BiasLTL(BaseEstimator):
                 weight_vectors_per_metaparameter.append(weight_vectors_per_task)
             return weight_vectors_per_metaparameter
 
-    def predict(self, all_features, weight_vectors,  extra_inputs=None):
+    def predict(self, all_features,  extra_inputs=None):
+        weight_vectors = self.fit_inner(extra_inputs['re_train_features'], extra_inputs['re_train_labels'], extra_inputs)
         extra_inputs = self._check_extra_inputs(extra_inputs)
 
         all_features = check_array(all_features)

@@ -81,7 +81,7 @@ def split_data(all_features, all_labels, data_settings):
 def concatenate_data(all_features, all_labels):
     point_indexes_per_task = []
     for counter in range(len(all_features)):
-        point_indexes_per_task.append(counter * np.ones(all_features[counter].shape[0]))
+        point_indexes_per_task.append(counter + np.zeros(all_features[counter].shape[0]))
     point_indexes_per_task = np.concatenate(point_indexes_per_task).astype(int)
 
     all_features = np.concatenate(all_features)

@@ -5,6 +5,9 @@ from src.utilities import multiple_tasks_mse
 from src.data_management import split_data
 from src.data_management import concatenate_data
 
+from sklearn.preprocessing import StandardScaler
+from src.preprocessing import ThressholdScaler
+from src.loadData import load_data_essex
 
 def main():
     seed = 999
@@ -25,74 +28,41 @@ def main():
                      'validation_points_pct': validation_points_pct,
                      'test_points_pct': test_points_pct}
 
-    #######################################################################
-    #######################################################################
-    #######################################################################
-    # This chunk is hardcoded as an example of the structure the data should have.
-    # A list of all the features and labels for all tasks basically
-    n_tasks = 300
-    dims = 10
-    noise = 0.5
-    all_features = []
-    all_labels = []
-    common_mean = 5 * np.random.randn(dims)
-    n_points = 60
-    for task_idx in range(n_tasks):
-        # Total number of points for the current task.
-        # n_points = np.random.randint(low=100, high=150)
-
-        # Generating and normalizing the data.
-        features = np.random.randn(n_points, dims)
-        features = features / norm(features, axis=1, keepdims=True)
-        # Generating the weight vector "around" the common mean.
-        weight_vector = common_mean + np.random.randn(dims)
-        # Linear model plus some noise.
-        labels = features @ weight_vector + noise * np.random.randn(n_points)
-
-        # Throwing the features and labels in their corresponding dictionary place.
-        all_features.append(features)
-        all_labels.append(labels)
-    ########################################################################
-    ########################################################################
-    ########################################################################
+    all_features, all_labels = load_data_essex()
 
     # Split the data into training/validation/test tasks.
     data = split_data(all_features, all_labels, data_settings)
-
     # Training
     # TODO Wrap the validation from this point
     model_ltl = BiasLTL(regularization_parameter=1e-1, step_size_bit=1e+3)
-    training_tasks_training_features, training_tasks_training_labels, point_indexes_per_training_task = concatenate_data(data['training_tasks_training_features'], data['training_tasks_training_labels'])
-    model_ltl.fit(training_tasks_training_features, training_tasks_training_labels, {'point_indexes_per_task': point_indexes_per_training_task})
+    outlier = ThressholdScaler()
+    norm = StandardScaler()
+    training_features, training_labels, point_indexes_per_task = concatenate_data(data['training_tasks_training_features'], data['training_tasks_training_labels'])
+    training_features = outlier.fit_transform(training_features)
+    training_features = norm.fit_transform(training_features)
+    model_ltl.fit(training_features, training_labels, {'point_indexes_per_task': point_indexes_per_task})
 
     # Validation
-    validation_tasks_training_features, validation_tasks_training_labels, point_indexes_per_validation_task = concatenate_data(data['validation_tasks_training_features'], data['validation_tasks_training_labels'])
-    extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': point_indexes_per_validation_task}
-    weight_vectors_per_task = model_ltl.fit_inner(validation_tasks_training_features, all_labels=validation_tasks_training_labels, extra_inputs=extra_inputs)
+    re_train_features, re_train_labels, re_train_indexes = concatenate_data(data['validation_tasks_training_features'], data['validation_tasks_training_labels'])
+    re_train_features = outlier.transform(re_train_features)
+    re_train_features = norm.transform(re_train_features)
+    extra_inputs = {'predictions_for_each_training_task': False,
+                    're_train_indexes': re_train_indexes,
+                    're_train_features': re_train_features,
+                    're_train_labels': re_train_labels
+                    }
+    test_features, test_labels, point_indexes_per_test_task = concatenate_data(
+        data['test_tasks_training_features'], data['test_tasks_training_labels'])
+    test_features = outlier.transform(test_features)
+    test_features = norm.transform(test_features)
 
-    validation_tasks_test_features, _, point_indexes_per_validation_task = concatenate_data(data['validation_tasks_test_features'], data['validation_tasks_test_labels'])
-    extra_inputs['point_indexes_per_task'] = point_indexes_per_validation_task
-    predictions_validation = model_ltl.predict(validation_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
-
-    val_performance = multiple_tasks_mse(data['validation_tasks_test_labels'], predictions_validation, extra_inputs['predictions_for_each_training_task'])
-    print(val_performance)
-    # TODO (to this point) Use val_performance to pick the best regularization_parameter. If predictions_for_each_training_task = True, then val_performance is a list, not a scalar.
-
-    # Test
-    test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
-    extra_inputs = {'predictions_for_each_training_task': True, 'point_indexes_per_task': point_indexes_per_test_task}
-    weight_vectors_per_task = model_ltl.fit_inner(test_tasks_training_features, all_labels=test_tasks_training_labels, extra_inputs=extra_inputs)
-
-    test_tasks_test_features, _, point_indexes_per_test_task = concatenate_data(data['test_tasks_test_features'], data['test_tasks_test_labels'])
     extra_inputs['point_indexes_per_task'] = point_indexes_per_test_task
-    predictions_test = model_ltl.predict(test_tasks_test_features, weight_vectors_per_task, extra_inputs=extra_inputs)
-
-    ltl_test_performance = multiple_tasks_mse(data['test_tasks_test_labels'], predictions_test, extra_inputs['predictions_for_each_training_task'])
+    predictions_test = model_ltl.predict(test_features, extra_inputs=extra_inputs)
+    ltl_test_performance = multiple_tasks_mse(data['test_tasks_test_labels'], predictions_test,
+                                              extra_inputs['predictions_for_each_training_task'])
     print(ltl_test_performance)
 
-    ###################################################################################################
-    ###################################################################################################
-    ###################################################################################################
+    return predictions_test
     # Independent learning on the test tasks.
     from src.independent_learning import ITL
     test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
@@ -128,4 +98,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    aux = main()
