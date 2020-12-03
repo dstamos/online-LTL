@@ -37,27 +37,20 @@ class BiasLTL(BaseEstimator):
         else:
             all_features, all_labels = check_X_y(all_features, all_labels)
             all_features, all_labels = self._split_tasks(all_features, extra_inputs['re_train_indexes'], all_labels)
-
         if extra_inputs['predictions_for_each_training_task'] is False:
-            weight_vectors_per_task = [None] * len(all_features)
+            weight_vectors = self.metaparameter_
             for task_idx in range(len(all_features)):
-                if all_labels is None:
-                    w = self.metaparameter_
-                else:
-                    w = self.solve_wrt_w(self.metaparameter_, all_features[task_idx], all_labels[task_idx])
-                weight_vectors_per_task[task_idx] = w
-            return weight_vectors_per_task
+                if all_labels is not None:
+                    weight_vectors = self.solve_wrt_w(weight_vectors, all_features[task_idx], all_labels[task_idx])  # I don't know if this makes sense, check with Dimitri. The next loop is the same
+            return weight_vectors
         else:
             weight_vectors_per_metaparameter = []
             for metaparam_idx in range(len(self.all_metaparameters_)):
-                weight_vectors_per_task = [None] * len(all_features)
+                weight_vectors = self.all_metaparameters_[task_idx]
                 for task_idx in range(len(all_features)):
-                    if all_labels is None:
-                        w = self.all_metaparameters_[task_idx]
-                    else:
-                        w = self.solve_wrt_w(self.all_metaparameters_[metaparam_idx], all_features[task_idx], all_labels[task_idx])
-                    weight_vectors_per_task[task_idx] = w
-                weight_vectors_per_metaparameter.append(weight_vectors_per_task)
+                    if all_labels is not None:
+                        weight_vectors = self.solve_wrt_w(weight_vectors, all_features[task_idx], all_labels[task_idx])
+                weight_vectors_per_metaparameter.append(weight_vectors)
             return weight_vectors_per_metaparameter
 
     def predict(self, all_features,  extra_inputs=None):
@@ -66,15 +59,11 @@ class BiasLTL(BaseEstimator):
 
         all_features = check_array(all_features)
         all_features = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'])
-        if extra_inputs['predictions_for_each_training_task'] is False:
-            assert len(all_features) == len(weight_vectors), 'The number of weight vectors passed is not equal to the number of tasks.'
-        else:
-            assert [len(all_features) == len(weight_vectors[i]) for i in range(len(weight_vectors))], 'The number of weight vectors passed is not equal to the number of tasks.'
 
         if extra_inputs['predictions_for_each_training_task'] is False:
             all_predictions = []
             for task_idx in range(len(all_features)):
-                pred = np.matmul(all_features[task_idx], weight_vectors[task_idx])
+                pred = np.matmul(all_features[task_idx], weight_vectors)
                 all_predictions.append(pred)
             return all_predictions
         else:
@@ -83,8 +72,9 @@ class BiasLTL(BaseEstimator):
             all_predictions = []
             for metamodel_idx in range(len(weight_vectors)):
                 metamodel_predictions = []
+                weights = weight_vectors[i]
                 for task_idx in range(len(all_features)):
-                    pred = np.matmul(all_features[task_idx], weight_vectors[metamodel_idx][task_idx])
+                    pred = np.matmul(all_features[task_idx], weights)
                     metamodel_predictions.append(pred)
                 all_predictions.append(metamodel_predictions)
             return all_predictions

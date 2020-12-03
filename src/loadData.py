@@ -42,12 +42,12 @@ def split_data_essex(all_features, all_labels, retrain, test):
     validation_tasks_indexes = retrain
 
     # Training tasks (only training data)
-    training_tasks_training_features = [all_features[i] for i in  training_tasks_indexes]
+    training_tasks_training_features = [all_features[i] for i in training_tasks_indexes]
     training_tasks_training_labels = [all_labels[i] for i in training_tasks_indexes]
 
     # Validation tasks (training and test data)
-    validation_tasks_training_features = [all_features[i] for i in validation_tasks_indexes]
-    validation_tasks_training_labels = [all_labels[i] for i in validation_tasks_indexes]
+    re_train_features = [all_features[i] for i in validation_tasks_indexes]
+    re_train_labels = [all_labels[i] for i in validation_tasks_indexes]
 
     # Test tasks (training, validation and test tasks)
     test_tasks_training_features = [all_features[i] for i in test_tasks_indexes]
@@ -60,8 +60,8 @@ def split_data_essex(all_features, all_labels, retrain, test):
             'training_tasks_training_features': training_tasks_training_features,
             'training_tasks_training_labels': training_tasks_training_labels,
             # Validation tasks
-            'validation_tasks_training_features': validation_tasks_training_features,
-            'validation_tasks_training_labels': validation_tasks_training_labels,
+            'validation_tasks_training_features': re_train_features,
+            'validation_tasks_training_labels': re_train_labels,
             # Test tasks
             'test_tasks_training_features': test_tasks_training_features,
             'test_tasks_training_labels': test_tasks_training_labels
