@@ -14,9 +14,7 @@ class BiasLTL(BaseEstimator):
 
     def fit(self, all_features, all_labels, extra_inputs=None):
         extra_inputs = self._check_extra_inputs(extra_inputs)
-
         all_features, all_labels = check_X_y(all_features, all_labels)
-
         mean_vector = np.random.randn(all_features.shape[1]) / norm(np.random.randn(all_features.shape[1]))
         all_features, all_labels = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'], all_labels)
 
@@ -28,6 +26,8 @@ class BiasLTL(BaseEstimator):
         self.metaparameter_ = mean_vector
 
     def fit_inner(self, all_features, all_labels=None, extra_inputs=None):
+        if len(all_features) == 0:
+            return self.metaparameter_
         extra_inputs = self._check_extra_inputs(extra_inputs)
 
         check_is_fitted(self)
@@ -41,12 +41,12 @@ class BiasLTL(BaseEstimator):
             weight_vectors = self.metaparameter_
             for task_idx in range(len(all_features)):
                 if all_labels is not None:
-                    weight_vectors = self.solve_wrt_w(weight_vectors, all_features[task_idx], all_labels[task_idx])  # I don't know if this makes sense, check with Dimitri. The next loop is the same
+                    weight_vectors = self.solve_wrt_w(weight_vectors, all_features[task_idx], all_labels[task_idx])
             return weight_vectors
         else:
             weight_vectors_per_metaparameter = []
             for metaparam_idx in range(len(self.all_metaparameters_)):
-                weight_vectors = self.all_metaparameters_[task_idx]
+                weight_vectors = self.all_metaparameters_[metaparam_idx]
                 for task_idx in range(len(all_features)):
                     if all_labels is not None:
                         weight_vectors = self.solve_wrt_w(weight_vectors, all_features[task_idx], all_labels[task_idx])
@@ -62,19 +62,16 @@ class BiasLTL(BaseEstimator):
 
         if extra_inputs['predictions_for_each_training_task'] is False:
             all_predictions = []
-            for task_idx in range(len(all_features)):
-                pred = np.matmul(all_features[task_idx], weight_vectors)
+            for feats in all_features:
+                pred = np.matmul(feats, weight_vectors)
                 all_predictions.append(pred)
             return all_predictions
         else:
-            if self.all_metaparameters_ is None:
-                raise ValueError('Not all metaparameters were saved. Refit with predictions_for_each_training_task set to True.')
             all_predictions = []
-            for metamodel_idx in range(len(weight_vectors)):
+            for weights in weight_vectors:
                 metamodel_predictions = []
-                weights = weight_vectors[i]
-                for task_idx in range(len(all_features)):
-                    pred = np.matmul(all_features[task_idx], weights)
+                for feats in all_features:
+                    pred = np.matmul(feats, weights)
                     metamodel_predictions.append(pred)
                 all_predictions.append(metamodel_predictions)
             return all_predictions

@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.linalg.linalg import norm
 from src.ltl import BiasLTL
-from src.utilities import multiple_tasks_mse
+from src.utilities import multiple_tasks_mae_clip
 from src.data_management import split_data
 from src.data_management import concatenate_data
 
@@ -9,29 +9,30 @@ from sklearn.preprocessing import StandardScaler
 from src.preprocessing import ThressholdScaler
 from src.loadData import load_data_essex, split_data_essex
 
-if __name__ == "__main__":
-
-    all_features, all_labels = load_data_essex()
-
-    # Split the data into training/validation/test tasks.
-    data = split_data_essex(all_features, all_labels, [0, 1], [2])
+def single_fold(data, regularization, each_training):
     # Training
-    # TODO Wrap the validation from this point: Create a loop with the possible regularization parameters. Each loop
-    #  calls to train_test_split using the training data. The best model is selected before the retrain and test.
-    model_ltl = BiasLTL(regularization_parameter=1e-1, step_size_bit=1e+3)
+    model_ltl = BiasLTL(regularization_parameter=regularization, step_size_bit=1e+3)
     outlier = ThressholdScaler()
     norm = StandardScaler()
-    training_features, training_labels, point_indexes_per_task = concatenate_data(data['training_tasks_training_features'], data['training_tasks_training_labels'])
+    training_features, training_labels, point_indexes_per_task = concatenate_data(
+        data['training_tasks_training_features'], data['training_tasks_training_labels'])
     training_features = outlier.fit_transform(training_features)
     training_features = norm.fit_transform(training_features)
+    training_features = np.concatenate((np.ones((len(training_features), 1)), training_features), 1)
     model_ltl.fit(training_features, training_labels, {'point_indexes_per_task': point_indexes_per_task})
 
-
     # Testing. This should be kept fairly similar.
-    re_train_features, re_train_labels, re_train_indexes = concatenate_data(data['validation_tasks_training_features'], data['validation_tasks_training_labels'])
-    re_train_features = outlier.transform(re_train_features)
-    re_train_features = norm.transform(re_train_features)
-    extra_inputs = {'predictions_for_each_training_task': False,
+    if len(data['validation_tasks_training_features']):
+        re_train_features, re_train_labels, re_train_indexes = concatenate_data(data['validation_tasks_training_features'],
+                                                                                data['validation_tasks_training_labels'])
+        re_train_features = outlier.transform(re_train_features)
+        re_train_features = norm.transform(re_train_features)
+        re_train_features = np.concatenate((np.ones((len(re_train_features), 1)), re_train_features), 1)
+    else:
+        re_train_features = []
+        re_train_labels = []
+        re_train_indexes = []
+    extra_inputs = {'predictions_for_each_training_task': each_training,
                     're_train_indexes': re_train_indexes,
                     're_train_features': re_train_features,
                     're_train_labels': re_train_labels
@@ -40,14 +41,96 @@ if __name__ == "__main__":
         data['test_tasks_training_features'], data['test_tasks_training_labels'])
     test_features = outlier.transform(test_features)
     test_features = norm.transform(test_features)
+    test_features = np.concatenate((np.ones((len(test_features), 1)), test_features), 1)
 
     extra_inputs['point_indexes_per_task'] = point_indexes_per_test_task
     predictions_test = model_ltl.predict(test_features, extra_inputs=extra_inputs)
-    ltl_test_performance = multiple_tasks_mse(data['test_tasks_training_labels'], predictions_test,
-                                              extra_inputs['predictions_for_each_training_task'])
-    print(ltl_test_performance)
+    perf = multiple_tasks_mae_clip(data['test_tasks_training_labels'], predictions_test,
+                                             extra_inputs['predictions_for_each_training_task'])
+    return predictions_test, perf, (outlier, norm, model_ltl)
+
+
+def gridSearch(feats, labels, test, reg_param, ret):
+    nSubj = len(all_features)
+    ind = np.arange(nSubj * 3)
+    test_i = np.arange(3, dtype=int) + test*3
+    bestPerf = 1
+    performance = []
+    param_perf = np.zeros(len(reg_param))
+    for i, param in enumerate(reg_param): # Search for each possible regurlaization paramether
+        for s in range(nSubj): # In a cross validation manner
+            if s != test:
+                val = np.arange(3, dtype=int) + s*3
+                train = np.setdiff1d(ind, test_i)
+                train = np.setdiff1d(train, val)
+                data = split_data_essex(feats, labels, train, [val[:ret]], val[ret:])
+                foo, perf, foo = single_fold(data, param, False)
+                performance.append(perf)
+        param_perf[i] = np.mean(performance)
+        if param_perf[i] < bestPerf: # Save the best one
+            bestPerf = param_perf[i]
+            best_param = param
+    train = np.setdiff1d(ind, test_i)
+    data = split_data_essex(feats, labels, train, [test_i[:ret]], test_i[ret:])  # Retrain with train + val wiht the best
+    prediction, perf, mdl = single_fold(data, best_param, True)
+    return param_perf, prediction, perf, mdl
+
+
+
+def recalculate_perf(all_labels, prediction, days=3):
+    nSubj = len(prediction)
+    error = np.zeros(nSubj)
+    for s in range(nSubj):
+        p = np.clip(prediction[s], 0.1, 1)
+        test = np.arange(3, dtype=int) + s * 3
+        val = test[3-days:]
+        y = []
+        for i in val:
+            y = np.concatenate((y, all_labels[i]))
+        error[s] = np.median(np.abs(y-p))
+    return error
+
+if __name__ == "__main__":
+
+    all_features, all_labels = load_data_essex()
+
+    nSubj = int(len(all_features) / 3)
+    prediction = []
+    performance =[]
+    # Split the data into training/validation/test tasks.
+#    for s in range(nSubj): # Leave one subject out (no retrain)
+#        test = np.arange(3, dtype=int) + s*3
+#        data = split_data_essex(all_features, all_labels, [], test)
+#        pred, perf = single_fold(data)
+#        prediction.append(pred)
+#        performance.append(perf)
+
+    prediction2 = []
+    performance2 =[]
+    ind = np.arange(nSubj * 3)
+    for s in range(1): # Leave one subject out retrain 1 day
+
+        #TODO Incluir 2 for, 1ro con los metaparametros, segundo con  los folds de validation
+        train = np.setdiff1d(ind, test)
+        data = split_data_essex(all_features, all_labels, train, [test[0]], test[1:])
+        pred, perf, mdl = single_fold(data, 1e-1)
+        prediction2.append(pred)
+        performance2.append(perf)
 
     if False:
+        prediction3 = []
+        performance3 = []
+        for s in range(nSubj): # Leave one subject out retrain 2 days
+            test = np.arange(3, dtype=int) + s*3
+            data = split_data_essex(all_features, all_labels, test[:2], [test[2]])
+            pred, perf = single_fold(data)
+            prediction3.append(pred)
+            performance3.append(perf)
+        err2 = recalculate_perf(all_labels, prediction2, 2)
+        err3 = recalculate_perf(all_labels, prediction3, 1)
+        print(np.mean(err2))
+        print(np.mean(err3))
+
         # Independent learning on the test tasks.
         from src.independent_learning import ITL
         test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])

@@ -1,6 +1,6 @@
 import numpy as np
 
-def load_data_essex(path='', delete0=True, useStim=True, useRT=True, addBias=True):
+def load_data_essex(path='', delete0=True, useStim=True, useRT=True):
     extra = np.load(path+'extra.npy')
     if useStim:
         stim = np.load(path + 'stimFeatures.npy')
@@ -14,8 +14,6 @@ def load_data_essex(path='', delete0=True, useStim=True, useRT=True, addBias=Tru
                 val = np.logical_and(val, extra[:, 3] != 0)
             nval = np.sum(val)
             f = resp[val, :]
-            if addBias:
-                f = np.concatenate((np.ones((nval, 1)), f), 1)
             if useStim:
                 f = np.concatenate((f, stim[val, :]), 1)
             if useRT:
@@ -24,7 +22,8 @@ def load_data_essex(path='', delete0=True, useStim=True, useRT=True, addBias=Tru
             label.append(extra[val, 3])
     return feat, label
 
-def split_data_essex(all_features, all_labels, retrain, test):
+
+def split_data_essex(all_features, all_labels, train, retrain, test):
     """
     Training tasks only have training data.
     Validation tasks only have training and test data.
@@ -34,12 +33,9 @@ def split_data_essex(all_features, all_labels, retrain, test):
     :param data_settings:  dict of settings
     :return:
     """
-    indexes = np.arange(len(all_features))
-
-    training_tasks_indexes = np.setdiff1d(indexes, retrain)
-    training_tasks_indexes = np.setdiff1d(training_tasks_indexes, test)
-    test_tasks_indexes = test
+    training_tasks_indexes = train
     validation_tasks_indexes = retrain
+    test_tasks_indexes = test
 
     # Training tasks (only training data)
     training_tasks_training_features = [all_features[i] for i in training_tasks_indexes]
