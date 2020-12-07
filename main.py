@@ -9,6 +9,8 @@ from sklearn.preprocessing import StandardScaler
 from src.preprocessing import ThressholdScaler
 from src.loadData import load_data_essex, split_data_essex
 
+import pickle
+
 def single_fold(data, regularization, each_training):
     # Training
     model_ltl = BiasLTL(regularization_parameter=regularization, step_size_bit=1e+3)
@@ -51,27 +53,27 @@ def single_fold(data, regularization, each_training):
 
 
 def gridSearch(feats, labels, test, reg_param, ret):
-    nSubj = len(all_features)
-    ind = np.arange(nSubj * 3)
+    nSubj = int(len(all_features) / 3)
+    ind = np.arange(nSubj * 3, dtype=int)
     test_i = np.arange(3, dtype=int) + test*3
     bestPerf = 1
     performance = []
     param_perf = np.zeros(len(reg_param))
-    for i, param in enumerate(reg_param): # Search for each possible regurlaization paramether
-        for s in range(nSubj): # In a cross validation manner
+    for i, param in enumerate(reg_param):#Search for each possible regurlaization paramether
+        for s in range(nSubj): #In a cross validation manner
             if s != test:
                 val = np.arange(3, dtype=int) + s*3
                 train = np.setdiff1d(ind, test_i)
                 train = np.setdiff1d(train, val)
-                data = split_data_essex(feats, labels, train, [val[:ret]], val[ret:])
+                data = split_data_essex(feats, labels, train, val[:ret], val[ret:])
                 foo, perf, foo = single_fold(data, param, False)
                 performance.append(perf)
         param_perf[i] = np.mean(performance)
-        if param_perf[i] < bestPerf: # Save the best one
+        if param_perf[i] < bestPerf: #Save the best one
             bestPerf = param_perf[i]
             best_param = param
     train = np.setdiff1d(ind, test_i)
-    data = split_data_essex(feats, labels, train, [test_i[:ret]], test_i[ret:])  # Retrain with train + val wiht the best
+    data = split_data_essex(feats, labels, train, test_i[:ret], test_i[ret:])  # Retrain with train + val with the best
     prediction, perf, mdl = single_fold(data, best_param, True)
     return param_perf, prediction, perf, mdl
 
@@ -95,42 +97,23 @@ if __name__ == "__main__":
     all_features, all_labels = load_data_essex()
 
     nSubj = int(len(all_features) / 3)
+
     prediction = []
-    performance =[]
-    # Split the data into training/validation/test tasks.
-#    for s in range(nSubj): # Leave one subject out (no retrain)
-#        test = np.arange(3, dtype=int) + s*3
-#        data = split_data_essex(all_features, all_labels, [], test)
-#        pred, perf = single_fold(data)
-#        prediction.append(pred)
-#        performance.append(perf)
-
-    prediction2 = []
-    performance2 =[]
-    ind = np.arange(nSubj * 3)
-    for s in range(1): # Leave one subject out retrain 1 day
-
-        #TODO Incluir 2 for, 1ro con los metaparametros, segundo con  los folds de validation
-        train = np.setdiff1d(ind, test)
-        data = split_data_essex(all_features, all_labels, train, [test[0]], test[1:])
-        pred, perf, mdl = single_fold(data, 1e-1)
-        prediction2.append(pred)
-        performance2.append(perf)
+    models = []
+    bestmp = []
+    performance = np.zeros((nSubj, 24))
+    reg_param = [1e-3, 1e-2, 1e-1, 1, 10]
+    for s in range(nSubj): # Leave one subject out retrain 1 day
+        pp, pred, perf, mdl = gridSearch(all_features, all_labels, s, reg_param, 1)
+        performance[s] = perf
+        prediction.append(pred)
+        models.append(mdl)
+        bestmp.append(pp)
+    np.save('performance_1_retrain.npy', performance)
+    with open('results_1_retrain.pkl', 'wb') as f:  
+        pickle.dump([prediction, models, bestmp], f)
 
     if False:
-        prediction3 = []
-        performance3 = []
-        for s in range(nSubj): # Leave one subject out retrain 2 days
-            test = np.arange(3, dtype=int) + s*3
-            data = split_data_essex(all_features, all_labels, test[:2], [test[2]])
-            pred, perf = single_fold(data)
-            prediction3.append(pred)
-            performance3.append(perf)
-        err2 = recalculate_perf(all_labels, prediction2, 2)
-        err3 = recalculate_perf(all_labels, prediction3, 1)
-        print(np.mean(err2))
-        print(np.mean(err3))
-
         # Independent learning on the test tasks.
         from src.independent_learning import ITL
         test_tasks_training_features, test_tasks_training_labels, point_indexes_per_test_task = concatenate_data(data['test_tasks_training_features'], data['test_tasks_training_labels'])
