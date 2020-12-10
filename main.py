@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use('Qt4Agg')
+import matplotlib.pyplot as plt
 import numpy as np
 from numpy.linalg.linalg import norm
 from src.ltl import BiasLTL
@@ -53,44 +56,32 @@ def single_fold(data, regularization, each_training):
 
 
 def gridSearch(feats, labels, test, reg_param, ret):
-    nSubj = int(len(all_features) / 3)
+    nSubj = int(len(feats) / 3)
     ind = np.arange(nSubj * 3, dtype=int)
     test_i = np.arange(3, dtype=int) + test*3
     bestPerf = 1
     performance = []
     param_perf = np.zeros(len(reg_param))
-    for i, param in enumerate(reg_param):#Search for each possible regurlaization paramether
-        for s in range(nSubj): #In a cross validation manner
-            if s != test:
-                val = np.arange(3, dtype=int) + s*3
-                train = np.setdiff1d(ind, test_i)
-                train = np.setdiff1d(train, val)
-                data = split_data_essex(feats, labels, train, val[:ret], val[ret:])
-                foo, perf, foo = single_fold(data, param, False)
-                performance.append(perf)
-        param_perf[i] = np.mean(performance)
-        if param_perf[i] < bestPerf: #Save the best one
-            bestPerf = param_perf[i]
-            best_param = param
+    if len(reg_param) > 1:
+        for i, param in enumerate(reg_param):#Search for each possible regurlaization paramether
+            for s in range(nSubj): #In a cross validation manner
+                if s != test:
+                    val = np.arange(3, dtype=int) + s*3
+                    train = np.setdiff1d(ind, test_i)
+                    train = np.setdiff1d(train, val)
+                    data = split_data_essex(feats, labels, train, val[:ret], val[ret:])
+                    foo, perf, foo = single_fold(data, param, False)
+                    performance.append(perf)
+            param_perf[i] = np.mean(performance)
+            if param_perf[i] < bestPerf: #Save the best one
+                bestPerf = param_perf[i]
+                best_param = param
+    else:
+        best_param = reg_param[0]
     train = np.setdiff1d(ind, test_i)
     data = split_data_essex(feats, labels, train, test_i[:ret], test_i[ret:])  # Retrain with train + val with the best
     prediction, perf, mdl = single_fold(data, best_param, True)
     return param_perf, prediction, perf, mdl
-
-
-
-def recalculate_perf(all_labels, prediction, days=3):
-    nSubj = len(prediction)
-    error = np.zeros(nSubj)
-    for s in range(nSubj):
-        p = np.clip(prediction[s], 0.1, 1)
-        test = np.arange(3, dtype=int) + s * 3
-        val = test[3-days:]
-        y = []
-        for i in val:
-            y = np.concatenate((y, all_labels[i]))
-        error[s] = np.median(np.abs(y-p))
-    return error
 
 if __name__ == "__main__":
 
@@ -101,17 +92,19 @@ if __name__ == "__main__":
     prediction = []
     models = []
     bestmp = []
-    performance = np.zeros((nSubj, 24))
-    reg_param = [1e-3, 1e-2, 1e-1, 1, 10]
+    performance = np.zeros((nSubj, 3))
+    reg_param = [1e-1]
+    retrain = 2
     for s in range(nSubj): # Leave one subject out retrain 1 day
-        pp, pred, perf, mdl = gridSearch(all_features, all_labels, s, reg_param, 1)
+        pp, pred, perf, mdl = gridSearch(all_features, all_labels, s, reg_param, retrain)
         performance[s] = perf
         prediction.append(pred)
         models.append(mdl)
         bestmp.append(pp)
-    np.save('performance_1_retrain.npy', performance)
-    with open('results_1_retrain.pkl', 'wb') as f:  
+    np.save('performance_'+str(retrain)+'_retrain_test.npy', performance)
+    with open('results_'+str(retrain)+'_retrain_test.pkl', 'wb') as f:
         pickle.dump([prediction, models, bestmp], f)
+    plt.plot(np.mean(performance,0))
 
     if False:
         # Independent learning on the test tasks.

@@ -27,6 +27,8 @@ class BiasLTL(BaseEstimator):
 
     def fit_inner(self, all_features, all_labels=None, extra_inputs=None):
         if len(all_features) == 0:
+            if extra_inputs['predictions_for_each_training_task']:
+                return self.all_metaparameters_
             return self.metaparameter_
         extra_inputs = self._check_extra_inputs(extra_inputs)
 
