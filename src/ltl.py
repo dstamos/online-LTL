@@ -12,14 +12,23 @@ class BiasLTL(BaseEstimator):
         self.all_metaparameters_ = None
         self.metaparameter_ = None
 
-    def fit(self, all_features, all_labels, extra_inputs=None):
-        extra_inputs = self._check_extra_inputs(extra_inputs)
-        all_features, all_labels = check_X_y(all_features, all_labels)
+    def fit_meta(self, all_features, all_labels, point_indexes_per_task):
+        """
+        This optimises the metalearning algorithm.
+        It recovers the very last metaparameter and all of them in a list (for the purpose of checking how the performance progresses with more training tasks).
+        :param all_features: concatenated features of all tasks (n * T, d)
+        :param all_labels: concatenated labels of all tasks (n * T, )
+        :param point_indexes_per_task: tasks identifier for each datapoint of all tasks (n * T, )
+        :return:
+        """
         mean_vector = np.random.randn(all_features.shape[1]) / norm(np.random.randn(all_features.shape[1]))
-        all_features, all_labels = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'], all_labels)
+        all_features, all_labels = self._split_tasks(all_features, point_indexes_per_task, all_labels)
 
         all_metaparameters = [None] * len(all_features)
         for task_idx in range(len(all_features)):
+            # TODO Average?
+            # TODO Change pinv stuff
+            # TODO Pre-compute stuff?
             mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=task_idx, inner_iter_cap=3)
             all_metaparameters[task_idx] = mean_vector
         self.all_metaparameters_ = all_metaparameters
@@ -27,6 +36,7 @@ class BiasLTL(BaseEstimator):
 
     def fit_inner(self, all_features, all_labels=None, extra_inputs=None):
         if len(all_features) == 0:
+            # In this case there is no fine-tuning
             if extra_inputs['predictions_for_each_training_task']:
                 return self.all_metaparameters_
             return self.metaparameter_
@@ -35,10 +45,10 @@ class BiasLTL(BaseEstimator):
         check_is_fitted(self)
         if all_labels is None:
             all_features = check_array(all_features)
-            all_features = self._split_tasks(all_features, extra_inputs['re_train_indexes'])
+            all_features = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'])
         else:
             all_features, all_labels = check_X_y(all_features, all_labels)
-            all_features, all_labels = self._split_tasks(all_features, extra_inputs['re_train_indexes'], all_labels)
+            all_features, all_labels = self._split_tasks(all_features, extra_inputs['point_indexes_per_task'], all_labels)
         if extra_inputs['predictions_for_each_training_task'] is False:
             weight_vectors = self.metaparameter_
             for task_idx in range(len(all_features)):
@@ -55,8 +65,7 @@ class BiasLTL(BaseEstimator):
                 weight_vectors_per_metaparameter.append(weight_vectors)
             return weight_vectors_per_metaparameter
 
-    def predict(self, all_features,  extra_inputs=None):
-        weight_vectors = self.fit_inner(extra_inputs['re_train_features'], extra_inputs['re_train_labels'], extra_inputs)
+    def predict(self, all_features, weight_vectors, extra_inputs=None):
         extra_inputs = self._check_extra_inputs(extra_inputs)
 
         all_features = check_array(all_features)
@@ -110,11 +119,3 @@ class BiasLTL(BaseEstimator):
             return all_features
         all_labels = [all_labels[indexes == task_idx] for task_idx in np.unique(indexes)]
         return all_features, all_labels
-
-    @staticmethod
-    def _check_extra_inputs(extra_inputs):
-        if extra_inputs is None:
-            extra_inputs = {'predictions_for_each_training_task': False, 'point_indexes_per_task': None}
-        if extra_inputs['point_indexes_per_task'] is None:
-            raise ValueError("The vector point_indexes_per_task of task idendifiers is necessary.")
-        return extra_inputs

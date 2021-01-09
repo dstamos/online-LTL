@@ -7,7 +7,8 @@ from src.utilities import multiple_tasks_mae_clip
 from src.data_management import concatenate_data
 from sklearn.preprocessing import StandardScaler
 from src.preprocessing import ThressholdScaler
-from src.loadData import load_data_essex, split_data_essex
+from src.data_management_essex import load_data_essex, split_data_essex
+from src.preprocessing import PreProcess
 import pickle
 
 matplotlib.use('Qt5Agg')
@@ -98,15 +99,39 @@ matplotlib.use('Qt5Agg')
 #             y = labels[s*3 + 2]
 #             for d in range(21):
 #                 p = prediction[ap*8 + s][d][-1]
-#                 res[ap, s, d] = np.median(np.abs(y - np.clip(p, .1, 1)))
+#                 res[ap, s, d] =ThressholdScaler np.median(np.abs(y - np.clip(p, .1, 1)))
 #     return res
 
 
 def main(settings, seed):
     np.random.seed(seed)
 
+    # Load and split data datasets
     all_features, all_labels, all_experiment_names = load_data_essex(useRT=False)
-    split_data_essex(all_features, all_labels, all_experiment_names, settings)
+    data = split_data_essex(all_features, all_labels, all_experiment_names, settings)
+
+    # Preprocess the data
+    pre = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
+    tr_tasks_tr_features, tr_tasks_tr_labels, tr_tasks_tr_point_indexes_per_task = pre.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], training=True)
+
+    # Training
+    for regul_param in settings['regul_param_range']:
+        # Optimise metaparameters on the training tasks.
+        model_ltl = BiasLTL(regularization_parameter=regul_param, step_size_bit=1, keep_all_metaparameters=True)
+        model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels, tr_tasks_tr_point_indexes_per_task)
+
+        # Fine-tune on the validation tasks.
+        val_tasks_tr_features, val_tasks_tr_labels, val_tr_point_indexes_per_task = pre.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'])
+        weight_vectors = model_ltl.fit_inner(val_tasks_tr_features, val_tasks_tr_labels, {'point_indexes_per_task': val_tr_point_indexes_per_task})
+
+        # model_ltl.predict(val_tasks_tr_features, extra_inputs={'point_indexes_per_task': val_tr_point_indexes_per_task, 'predictions_for_each_training_task': False})
+
+        # Check performance on the validation tasks.
+    # Test
+    pass
+
+    # Plot
+    pass
 
 
 if __name__ == "__main__":
@@ -123,6 +148,7 @@ if __name__ == "__main__":
     # Parameters
     seed_range = range(1, 31)
     regul_param_range = np.logspace(-6, 4, 36)
+    # TODO Is this needed?
     iteratations_over_each_task = 3
 
     n_test_subjects = 1
@@ -130,29 +156,27 @@ if __name__ == "__main__":
     # TODO Will probably need settings for fine-tuning on day 0 of the test subject and straight up testing on days 1 and 2
 
     # Dataset split for training tasks (only training points)
-    training_tasks_training_points_pct = 0.2
-    assert training_tasks_training_points_pct < 1, 'Percentages need to add up to at most 1'
+    tr_tasks_tr_points_pct = 0.2
 
     # Dataset split for validation tasks (only training+validation points)
-    validation_tasks_training_points_pct = 0.2
-    validation_tasks_validation_points_pct = 0.3
-    assert validation_tasks_training_points_pct + validation_tasks_validation_points_pct < 1, 'Percentages need to add up to at most 1'
+    val_tasks_tr_points_pct = 0.2
+    val_tasks_val_points_pct = 0.3
 
     # Dataset split for test tasks
-    test_tasks_training_points_pct = 0.2
-    test_tasks_validation_points_pct = 0.3
+    test_tasks_tr_points_pct = 0.2
+    test_tasks_val_points_pct = 0.3
     test_tasks_test_points_pct = 0.5
-    assert test_tasks_training_points_pct + test_tasks_validation_points_pct + test_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
+    assert test_tasks_tr_points_pct + test_tasks_val_points_pct + test_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
 
     options = {'regul_param_range': regul_param_range,
                'iteratations_over_each_task': iteratations_over_each_task,
                'n_test_subjects': n_test_subjects,
                'fine_tuning': fine_tuning,
-               'training_tasks_training_points_pct': training_tasks_training_points_pct,
-               'validation_tasks_training_points_pct': validation_tasks_training_points_pct,
-               'validation_tasks_validation_points_pct': validation_tasks_validation_points_pct,
-               'test_tasks_training_points_pct': test_tasks_training_points_pct,
-               'test_tasks_validation_points_pct': test_tasks_validation_points_pct,
+               'tr_tasks_tr_points_pct': tr_tasks_tr_points_pct,
+               'val_tasks_tr_points_pct': val_tasks_tr_points_pct,
+               'val_tasks_val_points_pct': val_tasks_val_points_pct,
+               'test_tasks_tr_points_pct': test_tasks_tr_points_pct,
+               'test_tasks_val_points_pct': test_tasks_val_points_pct,
                'test_tasks_test_points_pct': test_tasks_test_points_pct}
 
     for curr_seed in seed_range:

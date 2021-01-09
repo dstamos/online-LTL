@@ -21,6 +21,7 @@ def multiple_tasks_mse(all_true_labels, all_predictions, error_progression=False
             all_performances.append(curr_metamodel_performance)
         return all_performances
 
+
 def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=False):
     if error_progression is False:
         performances = []
