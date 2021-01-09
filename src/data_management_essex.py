@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 
 
 def load_data_essex(path='', delete0=True, useStim=True, useRT=True):
-    extra = np.load(path+'extra.npy')
+    extra = np.load(path + 'extra.npy')
     if useStim:
         stim = np.load(path + 'stimFeatures.npy')
     resp = np.load(path + 'respFeatures.npy')
@@ -56,7 +56,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
     # FIXME A bunch of hardcoded things in this function.
     # Pick the test_subjects, find the corresponding test_tasks_indexes.
     n_experiments_per_subject = 3
-    n_all_subjects = len(all_features) // n_experiments_per_subject   # Hardcoded - the assumption is that all subjects had 3 days of experiments
+    n_all_subjects = len(all_features) // n_experiments_per_subject  # Hardcoded - the assumption is that all subjects had 3 days of experiments
     n_test_subjects = settings['n_test_subjects']
     test_subjects = np.random.choice(range(n_all_subjects), size=n_test_subjects, replace=False)
 
@@ -108,8 +108,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
         n_val_points = int(val_tasks_val_points_pct * n_all_points)
         training_features = x[shuffled_points_indexes[:n_tr_points], :]
         training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        validation_features = x[shuffled_points_indexes[n_tr_points+1:n_tr_points+n_val_points], :]
-        validation_labels = y[shuffled_points_indexes[n_tr_points+1:n_tr_points+n_val_points]]
+        validation_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points], :]
+        validation_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points]]
 
         val_tasks_tr_features.append(training_features)
         val_tasks_tr_labels.append(training_labels)
@@ -135,10 +135,10 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
         n_test_points = int(test_tasks_test_points_pct * n_all_points)
         training_features = x[shuffled_points_indexes[:n_tr_points], :]
         training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        validation_features = x[shuffled_points_indexes[n_tr_points+1:n_tr_points+n_val_points], :]
-        validation_labels = y[shuffled_points_indexes[n_tr_points+1:n_tr_points+n_val_points]]
-        test_features = x[shuffled_points_indexes[n_tr_points+n_val_points+1:n_tr_points+n_val_points+n_test_points], :]
-        test_labels = y[shuffled_points_indexes[n_tr_points+n_val_points+1:n_tr_points+n_val_points+n_test_points]]
+        validation_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points], :]
+        validation_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points]]
+        test_features = x[shuffled_points_indexes[n_tr_points + n_val_points + 1:n_tr_points + n_val_points + n_test_points], :]
+        test_labels = y[shuffled_points_indexes[n_tr_points + n_val_points + 1:n_tr_points + n_val_points + n_test_points]]
 
         test_tasks_tr_features.append(training_features)
         test_tasks_tr_labels.append(training_labels)
@@ -179,3 +179,12 @@ def concatenate_data(all_features, all_labels):
     all_features = np.concatenate(all_features)
     all_labels = np.concatenate(all_labels)
     return all_features, all_labels, point_indexes_per_task
+
+
+def split_tasks(all_features, indexes, all_labels=None):
+    # Split the blob/array of features into a list of tasks based on point_indexes_per_task
+    all_features = [all_features[indexes == task_idx] for task_idx in np.unique(indexes)]
+    if all_labels is None:
+        return all_features
+    all_labels = [all_labels[indexes == task_idx] for task_idx in np.unique(indexes)]
+    return all_features, all_labels

@@ -112,13 +112,13 @@ def main(settings, seed):
 
     # Preprocess the data
     pre = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
-    tr_tasks_tr_features, tr_tasks_tr_labels, tr_tasks_tr_point_indexes_per_task = pre.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], training=True)
+    tr_tasks_tr_features, tr_tasks_tr_labels = pre.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], training=True)
 
     # Training
     for regul_param in settings['regul_param_range']:
         # Optimise metaparameters on the training tasks.
-        model_ltl = BiasLTL(regularization_parameter=regul_param, step_size_bit=1, keep_all_metaparameters=True)
-        model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels, tr_tasks_tr_point_indexes_per_task)
+        model_ltl = BiasLTL(regul_param=regul_param, step_size_bit=1, keep_all_metaparameters=True)
+        model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels)
 
         # Fine-tune on the validation tasks.
         val_tasks_tr_features, val_tasks_tr_labels, val_tr_point_indexes_per_task = pre.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'])

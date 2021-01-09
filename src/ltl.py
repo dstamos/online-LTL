@@ -5,24 +5,22 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 
 class BiasLTL(BaseEstimator):
-    def __init__(self, regularization_parameter=1e-2, step_size_bit=1e+3, keep_all_metaparameters=True):
+    def __init__(self, regul_param=1e-2, step_size_bit=1e+3, keep_all_metaparameters=True):
         self.keep_all_metaparameters = keep_all_metaparameters
-        self.regularization_parameter = regularization_parameter
+        self.regularization_parameter = regul_param
         self.step_size_bit = step_size_bit
         self.all_metaparameters_ = None
         self.metaparameter_ = None
 
-    def fit_meta(self, all_features, all_labels, point_indexes_per_task):
+    def fit_meta(self, all_features, all_labels):
         """
         This optimises the metalearning algorithm.
         It recovers the very last metaparameter and all of them in a list (for the purpose of checking how the performance progresses with more training tasks).
-        :param all_features: concatenated features of all tasks (n * T, d)
-        :param all_labels: concatenated labels of all tasks (n * T, )
-        :param point_indexes_per_task: tasks identifier for each datapoint of all tasks (n * T, )
+        :param all_features: List of features for each task. List length is T. Each component is a (n, d) array.
+        :param all_labels: List of labels for each task. List length is T. Each component is a (n, ) array.
         :return:
         """
-        mean_vector = np.random.randn(all_features.shape[1]) / norm(np.random.randn(all_features.shape[1]))
-        all_features, all_labels = self._split_tasks(all_features, point_indexes_per_task, all_labels)
+        mean_vector = np.random.randn(all_features[0].shape[1]) / norm(np.random.randn(all_features[0].shape[1]))
 
         all_metaparameters = [None] * len(all_features)
         for task_idx in range(len(all_features)):

@@ -3,6 +3,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import StandardScaler
 from src.data_management_essex import concatenate_data
 from numpy.linalg.linalg import norm
+from src.data_management_essex import split_tasks
 
 
 class ThressholdScaler(BaseEstimator, TransformerMixin):
@@ -63,4 +64,5 @@ class PreProcess:
         if self.add_bias is True:
             concatenated_features = np.concatenate((np.ones((len(concatenated_features), 1)), concatenated_features), 1)
 
-        return concatenated_features, concatenated_labels, point_indexes_per_task
+        all_features, all_labels = split_tasks(concatenated_features, point_indexes_per_task, concatenated_labels)
+        return all_features, all_labels
