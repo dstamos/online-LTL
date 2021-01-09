@@ -7,6 +7,7 @@ from src.utilities import multiple_tasks_mae_clip
 from src.data_management import concatenate_data
 from sklearn.preprocessing import StandardScaler
 from src.preprocessing import ThressholdScaler
+from time import time
 from src.data_management_essex import load_data_essex, split_data_essex
 from src.preprocessing import PreProcess
 import pickle
@@ -115,18 +116,29 @@ def main(settings, seed):
     tr_tasks_tr_features, tr_tasks_tr_labels = pre.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], training=True)
 
     # Training
+    tt = time()
+    best_performance = np.Inf
     for regul_param in settings['regul_param_range']:
         # Optimise metaparameters on the training tasks.
         model_ltl = BiasLTL(regul_param=regul_param, step_size_bit=1, keep_all_metaparameters=True)
         model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels)
 
-        # Fine-tune on the validation tasks.
-        val_tasks_tr_features, val_tasks_tr_labels, val_tr_point_indexes_per_task = pre.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'])
-        weight_vectors = model_ltl.fit_inner(val_tasks_tr_features, val_tasks_tr_labels, {'point_indexes_per_task': val_tr_point_indexes_per_task})
-
-        # model_ltl.predict(val_tasks_tr_features, extra_inputs={'point_indexes_per_task': val_tr_point_indexes_per_task, 'predictions_for_each_training_task': False})
-
         # Check performance on the validation tasks.
+        val_tasks_tr_features, val_tasks_tr_labels = pre.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'], training=False)
+        val_tasks_val_features, val_tasks_val_labels = pre.transform(data['val_tasks_val_features'], data['val_tasks_val_labels'], training=False)
+        if settings['fine_tune'] is True:
+            all_weight_vectors = model_ltl.fine_tune(val_tasks_tr_features, val_tasks_tr_labels)
+            val_task_predictions = model_ltl.predict(val_tasks_val_features, all_weight_vectors)
+        else:
+            val_task_predictions = model_ltl.predict(val_tasks_val_features)
+        val_performance = multiple_tasks_mae_clip(val_tasks_val_labels, val_task_predictions, error_progression=False)
+        if val_performance < best_performance:
+            best_param = regul_param
+            best_performance = val_performance
+            best_model_ltl = model_ltl
+        print(f'LTL | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
+    print(f'LTL | best val performance: {best_performance:12.5f} | {time() - tt:5.2f}sec')
+    exit()
     # Test
     pass
 
@@ -152,7 +164,7 @@ if __name__ == "__main__":
     iteratations_over_each_task = 3
 
     n_test_subjects = 1
-    fine_tuning = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
+    fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
     # TODO Will probably need settings for fine-tuning on day 0 of the test subject and straight up testing on days 1 and 2
 
     # Dataset split for training tasks (only training points)
@@ -171,7 +183,7 @@ if __name__ == "__main__":
     options = {'regul_param_range': regul_param_range,
                'iteratations_over_each_task': iteratations_over_each_task,
                'n_test_subjects': n_test_subjects,
-               'fine_tuning': fine_tuning,
+               'fine_tune': fine_tune,
                'tr_tasks_tr_points_pct': tr_tasks_tr_points_pct,
                'val_tasks_tr_points_pct': val_tasks_tr_points_pct,
                'val_tasks_val_points_pct': val_tasks_val_points_pct,
