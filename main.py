@@ -120,9 +120,10 @@ def main(settings, seed):
     best_model_ltl = None
     best_param = None
     best_performance = np.Inf
+    model_ltl = BiasLTL(step_size_bit=1, keep_all_metaparameters=True)
     for regul_param in settings['regul_param_range']:
         # Optimise metaparameters on the training tasks.
-        model_ltl = BiasLTL(regul_param=regul_param, step_size_bit=1, keep_all_metaparameters=True)
+        model_ltl.regularization_parameter = regul_param
         model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels)
 
         # Check performance on the validation tasks.
@@ -152,8 +153,9 @@ def main(settings, seed):
     else:
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
     test_performance = multiple_tasks_mae_clip(test_tasks_test_labels, test_task_predictions, error_progression=True)
+    print(test_performance)
     plt.plot(test_performance)
-    # plt.show()
+    plt.show()
     k = 1
     exit()
 

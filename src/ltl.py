@@ -19,14 +19,18 @@ class BiasLTL:
         :param all_labels: List of labels for each task. List length is T. Each component is a (n, ) array.
         :return:
         """
-        mean_vector = np.random.randn(all_features[0].shape[1]) / norm(np.random.randn(all_features[0].shape[1]))
+        if self.metaparameter_ is not None:
+            # Initializaton from a previous optimation.
+            mean_vector = self.metaparameter_
+        else:
+            mean_vector = np.random.randn(all_features[0].shape[1]) / norm(np.random.randn(all_features[0].shape[1]))
 
-        all_metaparameters = [None] * len(all_features)
+        all_metaparameters = []
         for task_idx in range(len(all_features)):
-            # TODO Average?
-            # TODO Pre-compute stuff?
             mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=task_idx, inner_iter_cap=3)
-            all_metaparameters[task_idx] = mean_vector
+            if all_metaparameters:
+                mean_vector = (task_idx * all_metaparameters[-1] + mean_vector) / (task_idx + 1)
+            all_metaparameters.append(mean_vector)
         self.all_metaparameters_ = all_metaparameters
         self.metaparameter_ = mean_vector
 
