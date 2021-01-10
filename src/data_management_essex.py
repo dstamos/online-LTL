@@ -2,11 +2,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 
-def load_data_essex(path='', delete0=True, useStim=True, useRT=True):
-    extra = np.load(path + 'extra.npy')
+def load_data_essex(delete0=True, useStim=True, useRT=True):
+    extra = np.load('./data/extra.npy')
     if useStim:
-        stim = np.load(path + 'stimFeatures.npy')
-    resp = np.load(path + 'respFeatures.npy')
+        stim = np.load('./data/stimFeatures.npy')
+    resp = np.load('./data/respFeatures.npy')
     feat = []
     label = []
     for s in np.unique(extra[:, 0]):

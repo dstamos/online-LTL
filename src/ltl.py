@@ -1,6 +1,55 @@
-import numpy as np
 from scipy.linalg import lstsq
-from numpy.linalg.linalg import norm, pinv, matrix_power
+import numpy as np
+from numpy.linalg.linalg import norm
+from src.utilities import multiple_tasks_mae_clip
+from time import time
+from src.preprocessing import PreProcess
+
+
+def train_test_meta(data, settings):
+    # Preprocess the data
+    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
+    tr_tasks_tr_features, tr_tasks_tr_labels = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], fit=True)
+
+    # Training
+    tt = time()
+    best_model_ltl = None
+    best_param = None
+    best_performance = np.Inf
+    model_ltl = BiasLTL(step_size_bit=1, keep_all_metaparameters=True)
+    for regul_param in settings['regul_param_range']:
+        # Optimise metaparameters on the training tasks.
+        model_ltl.regularization_parameter = regul_param
+        model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels)
+
+        # Check performance on the validation tasks.
+        val_tasks_tr_features, val_tasks_tr_labels = preprocessing.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'], fit=False)
+        val_tasks_val_features, val_tasks_val_labels = preprocessing.transform(data['val_tasks_val_features'], data['val_tasks_val_labels'], fit=False)
+        if settings['fine_tune'] is True:
+            # TODO Properly fine-tune here or not?
+            all_weight_vectors = model_ltl.fine_tune(val_tasks_tr_features, val_tasks_tr_labels)
+            val_task_predictions = model_ltl.predict(val_tasks_val_features, all_weight_vectors)
+        else:
+            val_task_predictions = model_ltl.predict(val_tasks_val_features)
+        val_performance = multiple_tasks_mae_clip(val_tasks_val_labels, val_task_predictions, error_progression=False)
+        if val_performance < best_performance:
+            best_param = regul_param
+            best_performance = val_performance
+            best_model_ltl = model_ltl
+        print(f'LTL | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
+
+    # Test
+    test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(data['test_tasks_tr_features'], data['test_tasks_tr_labels'], fit=False)
+    test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False)
+    if settings['fine_tune'] is True:
+        all_weight_vectors = best_model_ltl.fine_tune(test_tasks_tr_features, test_tasks_tr_labels, best_param)
+        # TODO At this point we can fully refit over the test tasks. The same goes for the validation step perhaps
+        test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
+    else:
+        test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
+    test_performance = multiple_tasks_mae_clip(test_tasks_test_labels, test_task_predictions, error_progression=True)
+    print(f'LTL | test performance: {test_performance[-1]:12.5f} | {time() - tt:5.2f}sec')
+    return best_model_ltl, test_performance
 
 
 class BiasLTL:

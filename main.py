@@ -1,15 +1,10 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy.linalg.linalg import norm
-from src.ltl import BiasLTL
-from src.utilities import multiple_tasks_mae_clip
-from src.data_management import concatenate_data
-from sklearn.preprocessing import StandardScaler
-from src.preprocessing import ThressholdScaler
+from src.ltl import train_test_meta
+from src.independent_learning import train_test_itl
 from time import time
 from src.data_management_essex import load_data_essex, split_data_essex
-from src.preprocessing import PreProcess
 import pickle
 
 matplotlib.use('Qt5Agg')
@@ -111,56 +106,25 @@ def main(settings, seed):
     all_features, all_labels, all_experiment_names = load_data_essex(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings)
 
-    # Preprocess the data
-    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
-    tr_tasks_tr_features, tr_tasks_tr_labels = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], fit=True)
+    test_performance_itl = train_test_itl(data, settings)
 
-    # Training
-    tt = time()
-    best_model_ltl = None
-    best_param = None
-    best_performance = np.Inf
-    model_ltl = BiasLTL(step_size_bit=1, keep_all_metaparameters=True)
-    for regul_param in settings['regul_param_range']:
-        # Optimise metaparameters on the training tasks.
-        model_ltl.regularization_parameter = regul_param
-        model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels)
+    best_model_meta, test_performance_meta = train_test_meta(data, settings)
 
-        # Check performance on the validation tasks.
-        val_tasks_tr_features, val_tasks_tr_labels = preprocessing.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'], fit=False)
-        val_tasks_val_features, val_tasks_val_labels = preprocessing.transform(data['val_tasks_val_features'], data['val_tasks_val_labels'], fit=False)
-        if settings['fine_tune'] is True:
-            # TODO Pass a parameter range or not here.
-            all_weight_vectors = model_ltl.fine_tune(val_tasks_tr_features, val_tasks_tr_labels)
-            val_task_predictions = model_ltl.predict(val_tasks_val_features, all_weight_vectors)
-        else:
-            val_task_predictions = model_ltl.predict(val_tasks_val_features)
-        val_performance = multiple_tasks_mae_clip(val_tasks_val_labels, val_task_predictions, error_progression=False)
-        if val_performance < best_performance:
-            best_param = regul_param
-            best_performance = val_performance
-            best_model_ltl = model_ltl
-        print(f'LTL | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
-    print(f'LTL | best val performance: {best_performance:12.5f} | {time() - tt:5.2f}sec')
+    font = {'size': 24}
+    matplotlib.rc('font', **font)
+    my_dpi = 100
+    fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
 
-    # Test
-    test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(data['test_tasks_tr_features'], data['test_tasks_tr_labels'], fit=False)
-    test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False)
-    if settings['fine_tune'] is True:
-        all_weight_vectors = best_model_ltl.fine_tune(test_tasks_tr_features, test_tasks_tr_labels, best_param)
-        # TODO At this point we can fully refit over the test tasks. The same goes for the validation step perhaps
-        test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
-    else:
-        test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
-    test_performance = multiple_tasks_mae_clip(test_tasks_test_labels, test_task_predictions, error_progression=True)
-    print(test_performance)
-    plt.plot(test_performance)
+    ax.plot(range(1, len(test_performance_meta) + 1), [test_performance_itl] * len(test_performance_meta), linewidth=2, color='tab:red', label='Independent Learning')
+    ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
+
+    plt.xlabel('# training tasks')
+    plt.ylabel('test performance')
+    plt.legend()
+    plt.savefig('temp' + '.png', pad_inches=0)
+    plt.pause(0.1)
     plt.show()
-    k = 1
     exit()
-
-    # Plot
-    pass
 
 
 if __name__ == "__main__":

@@ -36,8 +36,14 @@ class PreProcess:
         self.inside_ball_scaling = inside_ball_scaling
         self.add_bias = add_bias
 
-    def transform(self, all_features, all_labels, fit=False):
-        concatenated_features, concatenated_labels, point_indexes_per_task = concatenate_data(all_features, all_labels)
+    def transform(self, all_features, all_labels, fit=False, multiple_tasks=True):
+        if multiple_tasks is True:
+            concatenated_features, concatenated_labels, point_indexes_per_task = concatenate_data(all_features, all_labels)
+        else:
+            # In the case you want to preprocess just a single dataset, pass multiple_tasks=False
+            concatenated_features = all_features
+            concatenated_labels = all_labels
+            point_indexes_per_task = None
 
         # These two scalers technically should be somehow applied before merging.
         # The reasoning is that metalearning is done in an online fashion, without reusing past data.
@@ -64,5 +70,6 @@ class PreProcess:
         if self.add_bias is True:
             concatenated_features = np.concatenate((np.ones((len(concatenated_features), 1)), concatenated_features), 1)
 
-        all_features, all_labels = split_tasks(concatenated_features, point_indexes_per_task, concatenated_labels)
+        if multiple_tasks is True:
+            all_features, all_labels = split_tasks(concatenated_features, point_indexes_per_task, concatenated_labels)
         return all_features, all_labels
