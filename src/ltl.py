@@ -24,7 +24,6 @@ class BiasLTL:
         all_metaparameters = [None] * len(all_features)
         for task_idx in range(len(all_features)):
             # TODO Average?
-            # TODO Change pinv stuff
             # TODO Pre-compute stuff?
             mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=task_idx, inner_iter_cap=3)
             all_metaparameters[task_idx] = mean_vector
@@ -67,12 +66,11 @@ class BiasLTL:
     def solve_wrt_metaparameter(self, h, x, y, curr_iteration=0, inner_iter_cap=10):
         step_size_bit = 1e+3
         n = len(y)
+        c_n_hat = x.T @ x / n + self.regularization_parameter * np.eye(x.shape[1])
+        x_n_hat = (self.regularization_parameter / np.sqrt(n) * lstsq(c_n_hat.T, x.T)[0]).T
+        y_n_hat = 1 / np.sqrt(n) * (y - x @ lstsq(c_n_hat, x.T @ y)[0] / n)
 
         def grad(curr_h):
-            c_n_hat = x.T @ x / n + self.regularization_parameter * np.eye(x.shape[1])
-            x_n_hat = (self.regularization_parameter / np.sqrt(n) * lstsq(c_n_hat.T, x.T)[0]).T
-            y_n_hat = 1 / np.sqrt(n) * (y - x @ lstsq(c_n_hat, x.T @ y)[0] / n)
-
             grad_h = x_n_hat.T @ (x_n_hat @ curr_h - y_n_hat)
             return grad_h
 
