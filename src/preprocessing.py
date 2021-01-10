@@ -36,12 +36,12 @@ class PreProcess:
         self.inside_ball_scaling = inside_ball_scaling
         self.add_bias = add_bias
 
-    def transform(self, all_features, all_labels, training=False):
+    def transform(self, all_features, all_labels, fit=False):
         concatenated_features, concatenated_labels, point_indexes_per_task = concatenate_data(all_features, all_labels)
 
         # These two scalers technically should be somehow applied before merging.
         # The reasoning is that metalearning is done in an online fashion, without reusing past data.
-        if training is True:
+        if fit is True:
             if self.threshold_scaling is True:
                 outlier = ThressholdScaler()
                 concatenated_features = outlier.fit_transform(concatenated_features)

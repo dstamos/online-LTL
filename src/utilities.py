@@ -25,11 +25,11 @@ def multiple_tasks_mse(all_true_labels, all_predictions, error_progression=False
 def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=False):
     if error_progression is False:
         all_predictions = all_predictions[-1]
-        
+
         performances = []
         for idx in range(len(all_true_labels)):
-            # curr_perf = np.clip(np.abs(all_true_labels[idx] - all_predictions[idx]), 0, 1)
-            curr_perf = np.abs(all_true_labels[idx] - all_predictions[idx])
+            curr_perf = np.clip(np.abs(all_true_labels[idx] - all_predictions[idx]), 0, 1)
+            # curr_perf = np.abs(all_true_labels[idx] - all_predictions[idx])
             performances = np.concatenate((performances, curr_perf), 0)
         performance = np.median(performances)
         return performance
@@ -38,8 +38,8 @@ def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=
         for metamodel_idx in range(len(all_predictions)):
             metamodel_performances = []
             for idx in range(len(all_true_labels)):
-                # curr_perf = np.clip(np.abs(all_true_labels[idx] - all_predictions[metamodel_idx][idx]), 0, 1)
-                curr_perf = np.abs(all_true_labels[idx] - all_predictions[metamodel_idx][idx])
+                curr_perf = np.clip(np.abs(all_true_labels[idx] - all_predictions[metamodel_idx][idx]), 0, 1)
+                # curr_perf = np.abs(all_true_labels[idx] - all_predictions[metamodel_idx][idx])
                 metamodel_performances = np.concatenate((metamodel_performances, curr_perf), 0)
             curr_metamodel_performance = np.median(metamodel_performances)
             all_performances.append(curr_metamodel_performance)
