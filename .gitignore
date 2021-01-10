@@ -22,4 +22,4 @@ _pycache_/
 # temp
 scratch*.py
 notes.txt
-
+results/

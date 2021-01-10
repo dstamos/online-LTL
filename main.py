@@ -1,9 +1,9 @@
 import matplotlib
 import matplotlib.pyplot as plt
+import os
 import numpy as np
 from src.ltl import train_test_meta
 from src.independent_learning import train_test_itl
-from time import time
 from src.data_management_essex import load_data_essex, split_data_essex
 import pickle
 
@@ -106,16 +106,20 @@ def main(settings, seed):
     all_features, all_labels, all_experiment_names = load_data_essex(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings)
 
-    test_performance_itl = train_test_itl(data, settings)
+    # test_performance_itl = train_test_itl(data, settings)
 
     best_model_meta, test_performance_meta = train_test_meta(data, settings)
+
+    os.makedirs('results', exist_ok=True)
+    filename = './results/' + 'seed_' + str(seed) + '.pckl'
+    # pickle.dump([test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 
     font = {'size': 24}
     matplotlib.rc('font', **font)
     my_dpi = 100
     fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
 
-    ax.plot(range(1, len(test_performance_meta) + 1), [test_performance_itl] * len(test_performance_meta), linewidth=2, color='tab:red', label='Independent Learning')
+    # ax.plot(range(1, len(test_performance_meta) + 1), [test_performance_itl] * len(test_performance_meta), linewidth=2, color='tab:red', label='Independent Learning')
     ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
 
     plt.xlabel('# training tasks')
@@ -124,7 +128,6 @@ def main(settings, seed):
     plt.savefig('temp' + '.png', pad_inches=0)
     plt.pause(0.1)
     plt.show()
-    exit()
 
 
 if __name__ == "__main__":
@@ -139,7 +142,8 @@ if __name__ == "__main__":
     """
 
     # Parameters
-    seed_range = range(1, 31)
+    # seed_range = range(1, 31)
+    seed_range = [2]
     regul_param_range = np.logspace(-6, 4, 36)
     # TODO Is this needed?
     iteratations_over_each_task = 3
