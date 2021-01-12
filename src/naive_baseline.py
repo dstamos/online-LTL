@@ -8,17 +8,13 @@ from src.utilities import mae_clip
 
 
 def train_test_itl(data, settings):
-    # Preprocess the data
-    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
-
-    # Training
+    # "Training"
     tt = time()
-    best_model = None
     all_performances = []
     for task_idx in range(len(data['test_tasks_indexes'])):
-        x_tr, y_tr = preprocessing.transform(data['test_tasks_tr_features'][task_idx], data['test_tasks_tr_labels'][task_idx], fit=True, multiple_tasks=False)
-        x_val, y_val = preprocessing.transform(data['test_tasks_val_features'][task_idx], data['test_tasks_val_labels'][task_idx], fit=False, multiple_tasks=False)
-        x_test, y_test = preprocessing.transform(data['test_tasks_test_features'][task_idx], data['test_tasks_test_labels'][task_idx], fit=False, multiple_tasks=False)
+        # First merge, since there is no validation in this naive approach.
+        y_tr = np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]])
+        y_test = data['test_tasks_val_features'][task_idx], data['test_tasks_val_labels'][task_idx], fit=False, multiple_tasks=False)
 
         best_performance = np.Inf
         for regul_param in settings['regul_param_range']:
