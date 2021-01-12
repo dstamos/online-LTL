@@ -68,6 +68,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
     tasks_indexes = list(range(0, n_all_subjects * n_experiments_per_subject))
     for idx in test_tasks_indexes:
         tasks_indexes.remove(idx)
+    # Validation tasks are picked randomly (not from the same person)
     training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
 
     tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']

@@ -106,21 +106,20 @@ def main(settings, seed):
     all_features, all_labels, all_experiment_names = load_data_essex(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings)
 
-    # test_performance_itl = train_test_itl(data, settings)
-
-    best_model_meta, test_performance_meta = train_test_meta(data, settings)
+    test_performance_itl = train_test_itl(data, settings)
+    # best_model_meta, test_performance_meta = train_test_meta(data, settings)
 
     os.makedirs('results', exist_ok=True)
     filename = './results/' + 'seed_' + str(seed) + '.pckl'
     # pickle.dump([test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-
+    # print(test_performance_meta)
     font = {'size': 24}
     matplotlib.rc('font', **font)
     my_dpi = 100
     fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
 
-    # ax.plot(range(1, len(test_performance_meta) + 1), [test_performance_itl] * len(test_performance_meta), linewidth=2, color='tab:red', label='Independent Learning')
-    ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
+    ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_itl] * len(data['training_tasks_indexes']), linewidth=2, color='tab:red', label='Independent Learning')
+    # ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
 
     plt.xlabel('# training tasks')
     plt.ylabel('test performance')
@@ -143,10 +142,10 @@ if __name__ == "__main__":
 
     # Parameters
     # seed_range = range(1, 31)
-    seed_range = [2]
+    seed_range = [3]
     regul_param_range = np.logspace(-6, 4, 36)
     # TODO Is this needed?
-    iteratations_over_each_task = 3
+    iteratations_over_each_task = None
 
     n_test_subjects = 1
     fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
@@ -157,7 +156,7 @@ if __name__ == "__main__":
 
     # Dataset split for validation tasks (only training+validation points)
     val_tasks_tr_points_pct = 0.2
-    val_tasks_val_points_pct = 0.3
+    val_tasks_val_points_pct = 0.8
 
     # Dataset split for test tasks
     test_tasks_tr_points_pct = 0.2

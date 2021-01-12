@@ -9,7 +9,7 @@ from src.utilities import mae_clip
 
 def train_test_itl(data, settings):
     # Preprocess the data
-    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
+    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
 
     # Training
     tt = time()

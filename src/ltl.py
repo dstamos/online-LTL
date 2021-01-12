@@ -80,6 +80,11 @@ class BiasLTL:
             if all_metaparameters:
                 mean_vector = (task_idx * all_metaparameters[-1] + mean_vector) / (task_idx + 1)
             all_metaparameters.append(mean_vector)
+
+            # if all_metaparameters:
+            #     all_metaparameters.append((task_idx * all_metaparameters[-1] + mean_vector) / (task_idx + 1))
+            # else:
+            #     all_metaparameters.append(mean_vector)
         self.all_metaparameters_ = all_metaparameters
         self.metaparameter_ = mean_vector
 
