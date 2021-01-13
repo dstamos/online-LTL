@@ -26,8 +26,7 @@ def train_test_meta(data, settings, verbose=True):
         val_tasks_tr_features, val_tasks_tr_labels = preprocessing.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'], fit=False)
         val_tasks_val_features, val_tasks_val_labels = preprocessing.transform(data['val_tasks_val_features'], data['val_tasks_val_labels'], fit=False)
         if settings['fine_tune'] is True:
-            # TODO Properly fine-tune here or not?
-            all_weight_vectors = model_ltl.fine_tune(val_tasks_tr_features, val_tasks_tr_labels)
+            all_weight_vectors = model_ltl.fine_tune(val_tasks_tr_features, val_tasks_tr_labels, regul_param=regul_param)
             val_task_predictions = model_ltl.predict(val_tasks_val_features, all_weight_vectors)
         else:
             val_task_predictions = model_ltl.predict(val_tasks_val_features)
@@ -40,12 +39,34 @@ def train_test_meta(data, settings, verbose=True):
             print(f'{"LTL":10s} | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
 
     # Test
+    # x_merged = [np.concatenate([data['test_tasks_tr_features'][task_idx], data['test_tasks_val_features'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
+    # y_merged = [np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
+    # test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(x_merged, y_merged, fit=False)
+
     test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(data['test_tasks_tr_features'], data['test_tasks_tr_labels'], fit=False)
+    test_tasks_val_features, test_tasks_val_labels = preprocessing.transform(data['test_tasks_val_features'], data['test_tasks_val_labels'], fit=False)
     test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False)
     if settings['fine_tune'] is True:
         all_weight_vectors = best_model_ltl.fine_tune(test_tasks_tr_features, test_tasks_tr_labels, best_param)
-        # TODO At this point we can fully refit over the test tasks. The same goes for the validation step perhaps
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
+
+        # all_weight_vectors = [[None] * len(data['test_tasks_indexes'])] * len(best_model_ltl.all_metaparameters_)
+        # for task_idx in range(len(data['test_tasks_indexes'])):
+        #     best_performance = np.Inf
+        #     best_param = None
+        #     for regul_param in settings['regul_param_range']:
+        #         weight_vector = best_model_ltl.fine_tune([test_tasks_tr_features[task_idx]], [test_tasks_tr_labels[task_idx]], regul_param=regul_param)
+        #         val_predictions = best_model_ltl.predict([test_tasks_val_features[task_idx]], weight_vector)
+        #         val_performance = multiple_tasks_mae_clip([test_tasks_val_labels[task_idx]], val_predictions, error_progression=False)
+        #         if val_performance < best_performance:
+        #             best_performance = val_performance
+        #             best_param = regul_param
+        #     x_merged = np.concatenate([test_tasks_tr_features[task_idx], test_tasks_val_features[task_idx]])
+        #     y_merged = np.concatenate([test_tasks_tr_labels[task_idx], test_tasks_val_labels[task_idx]])
+        #     weight_vector = best_model_ltl.fine_tune([x_merged], [y_merged], regul_param=best_param)
+        #     for meta_param_idx in range(len(best_model_ltl.all_metaparameters_)):
+        #         all_weight_vectors[meta_param_idx][task_idx] = weight_vector[meta_param_idx][0]
+        # test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
     else:
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
     test_performance = multiple_tasks_mae_clip(test_tasks_test_labels, test_task_predictions, error_progression=True)

@@ -113,8 +113,7 @@ def main(settings, seed):
 
     os.makedirs('results', exist_ok=True)
     filename = './results/' + 'seed_' + str(seed) + '.pckl'
-    # pickle.dump([test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
-    # print(test_performance_meta)
+    pickle.dump([test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
     font = {'size': 24}
     matplotlib.rc('font', **font)
     my_dpi = 100
@@ -142,10 +141,10 @@ if __name__ == "__main__":
     d) Pick the metaparameter that resulted in the best average performance on the validation tasks.
     e) Go to the test tasks using the optimal metaparameter, fine-tune on a small number of points (or don't) and test the performance.
     """
-    print('k')
+
     # Parameters
     # seed_range = range(1, 31)
-    seed_range = [3]
+    seed_range = [9]
     regul_param_range = np.logspace(-10, 4, 49)
     # TODO Is this needed?
     iteratations_over_each_task = None
