@@ -4,6 +4,7 @@ import os
 import numpy as np
 from src.ltl import train_test_meta
 from src.independent_learning import train_test_itl
+from src.naive_baseline import train_test_naive
 from src.data_management_essex import load_data_essex, split_data_essex
 import pickle
 
@@ -106,8 +107,9 @@ def main(settings, seed):
     all_features, all_labels, all_experiment_names = load_data_essex(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings)
 
+    test_performance_naive = train_test_naive(data, settings)
     test_performance_itl = train_test_itl(data, settings)
-    # best_model_meta, test_performance_meta = train_test_meta(data, settings)
+    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
 
     os.makedirs('results', exist_ok=True)
     filename = './results/' + 'seed_' + str(seed) + '.pckl'
@@ -119,7 +121,8 @@ def main(settings, seed):
     fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
 
     ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_itl] * len(data['training_tasks_indexes']), linewidth=2, color='tab:red', label='Independent Learning')
-    # ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
+    ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_naive] * len(data['training_tasks_indexes']), linewidth=2, color='tab:gray', label='Naive Baseline')
+    ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
 
     plt.xlabel('# training tasks')
     plt.ylabel('test performance')
@@ -139,11 +142,11 @@ if __name__ == "__main__":
     d) Pick the metaparameter that resulted in the best average performance on the validation tasks.
     e) Go to the test tasks using the optimal metaparameter, fine-tune on a small number of points (or don't) and test the performance.
     """
-
+    print('k')
     # Parameters
     # seed_range = range(1, 31)
     seed_range = [3]
-    regul_param_range = np.logspace(-6, 4, 36)
+    regul_param_range = np.logspace(-10, 4, 49)
     # TODO Is this needed?
     iteratations_over_each_task = None
 
@@ -152,16 +155,16 @@ if __name__ == "__main__":
     # TODO Will probably need settings for fine-tuning on day 0 of the test subject and straight up testing on days 1 and 2
 
     # Dataset split for training tasks (only training points)
-    tr_tasks_tr_points_pct = 0.2
+    tr_tasks_tr_points_pct = 0.6
 
     # Dataset split for validation tasks (only training+validation points)
-    val_tasks_tr_points_pct = 0.2
-    val_tasks_val_points_pct = 0.8
+    val_tasks_tr_points_pct = 0.5
+    val_tasks_val_points_pct = 0.5
 
     # Dataset split for test tasks
-    test_tasks_tr_points_pct = 0.2
-    test_tasks_val_points_pct = 0.3
-    test_tasks_test_points_pct = 0.5
+    test_tasks_tr_points_pct = 0.6
+    test_tasks_val_points_pct = 0.2
+    test_tasks_test_points_pct = 0.2
     assert test_tasks_tr_points_pct + test_tasks_val_points_pct + test_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
 
     options = {'regul_param_range': regul_param_range,

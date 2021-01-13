@@ -32,17 +32,17 @@ class ThressholdScaler(BaseEstimator, TransformerMixin):
 class PreProcess:
     def __init__(self, threshold_scaling, standard_scaling, inside_ball_scaling, add_bias=False):
         self.threshold_scaling = threshold_scaling
+        self.threshold_scaler = None
         self.standard_scaling = standard_scaling
+        self.standard_scaler = None
         self.inside_ball_scaling = inside_ball_scaling
         self.add_bias = add_bias
 
     def transform(self, all_features, all_labels, fit=False, multiple_tasks=True):
         if multiple_tasks is True:
-            concatenated_features, concatenated_labels, point_indexes_per_task = concatenate_data(all_features, all_labels)
+            all_features, all_labels, point_indexes_per_task = concatenate_data(all_features, all_labels)
         else:
             # In the case you want to preprocess just a single dataset, pass multiple_tasks=False
-            concatenated_features = all_features
-            concatenated_labels = all_labels
             point_indexes_per_task = None
 
         # These two scalers technically should be somehow applied before merging.
@@ -50,26 +50,26 @@ class PreProcess:
         if fit is True:
             if self.threshold_scaling is True:
                 outlier = ThressholdScaler()
-                concatenated_features = outlier.fit_transform(concatenated_features)
-                self.threshold_scaling = outlier
+                all_features = outlier.fit_transform(all_features)
+                self.threshold_scaler = outlier
 
             if self.standard_scaling is True:
                 sc = StandardScaler()
-                concatenated_features = sc.fit_transform(concatenated_features)
-                self.standard_scaling = sc
+                all_features = sc.fit_transform(all_features)
+                self.standard_scaler = sc
         else:
             if self.threshold_scaling is True:
-                concatenated_features = self.threshold_scaling.transform(concatenated_features)
+                all_features = self.threshold_scaler.transform(all_features)
 
             if self.standard_scaling is True:
-                concatenated_features = self.standard_scaling.transform(concatenated_features)
+                all_features = self.standard_scaler.transform(all_features)
 
         if self.inside_ball_scaling is True:
-            concatenated_features = concatenated_features / norm(concatenated_features, axis=0, keepdims=True)
+            all_features = all_features / norm(all_features, axis=0, keepdims=True)
 
         if self.add_bias is True:
-            concatenated_features = np.concatenate((np.ones((len(concatenated_features), 1)), concatenated_features), 1)
+            all_features = np.concatenate((np.ones((len(all_features), 1)), all_features), 1)
 
         if multiple_tasks is True:
-            all_features, all_labels = split_tasks(concatenated_features, point_indexes_per_task, concatenated_labels)
+            all_features, all_labels = split_tasks(all_features, point_indexes_per_task, all_labels)
         return all_features, all_labels

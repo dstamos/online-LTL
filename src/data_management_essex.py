@@ -149,7 +149,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
         test_tasks_test_labels.append(test_labels)
 
         print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
-
+    print('\n')
     data = {'training_tasks_indexes': training_tasks_indexes,
             'validation_tasks_indexes': validation_tasks_indexes,
             'test_tasks_indexes': test_tasks_indexes,

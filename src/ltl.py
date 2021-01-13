@@ -6,7 +6,7 @@ from time import time
 from src.preprocessing import PreProcess
 
 
-def train_test_meta(data, settings):
+def train_test_meta(data, settings, verbose=True):
     # Preprocess the data
     preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
     tr_tasks_tr_features, tr_tasks_tr_labels = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], fit=True)
@@ -16,7 +16,7 @@ def train_test_meta(data, settings):
     best_model_ltl = None
     best_param = None
     best_performance = np.Inf
-    model_ltl = BiasLTL(step_size_bit=1, keep_all_metaparameters=True)
+    model_ltl = BiasLTL(keep_all_metaparameters=True)
     for regul_param in settings['regul_param_range']:
         # Optimise metaparameters on the training tasks.
         model_ltl.regularization_parameter = regul_param
@@ -36,7 +36,8 @@ def train_test_meta(data, settings):
             best_param = regul_param
             best_performance = val_performance
             best_model_ltl = model_ltl
-        print(f'LTL | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
+        if verbose is True:
+            print(f'{"LTL":10s} | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
 
     # Test
     test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(data['test_tasks_tr_features'], data['test_tasks_tr_labels'], fit=False)
@@ -48,15 +49,14 @@ def train_test_meta(data, settings):
     else:
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
     test_performance = multiple_tasks_mae_clip(test_tasks_test_labels, test_task_predictions, error_progression=True)
-    print(f'LTL | test performance: {test_performance[-1]:12.5f} | {time() - tt:5.2f}sec')
+    print(f'{"LTL":12s} | test performance: {test_performance[-1]:12.5f} | {time() - tt:5.2f}sec')
     return best_model_ltl, test_performance
 
 
 class BiasLTL:
-    def __init__(self, regul_param=1e-2, step_size_bit=1e+3, keep_all_metaparameters=True):
+    def __init__(self, regul_param=1e-2, keep_all_metaparameters=True):
         self.keep_all_metaparameters = keep_all_metaparameters
         self.regularization_parameter = regul_param
-        self.step_size_bit = step_size_bit
         self.all_metaparameters_ = None
         self.metaparameter_ = None
 
