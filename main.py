@@ -109,7 +109,12 @@ def main(settings, seed):
 
     test_performance_naive = train_test_naive(data, settings)
     test_performance_itl = train_test_itl(data, settings)
+<<<<<<< HEAD
     best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
+=======
+    # best_model_meta, test_performance_meta = train_test_meta(data, settings)
+    test_performance_naive = train_test_naive(data, settings)
+>>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
 
     os.makedirs('results', exist_ok=True)
     filename = './results/' + 'seed_' + str(seed) + '.pckl'
@@ -122,7 +127,11 @@ def main(settings, seed):
 
     ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_itl] * len(data['training_tasks_indexes']), linewidth=2, color='tab:red', label='Independent Learning')
     ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_naive] * len(data['training_tasks_indexes']), linewidth=2, color='tab:gray', label='Naive Baseline')
+<<<<<<< HEAD
     ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
+=======
+    # ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
+>>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
 
     plt.xlabel('# training tasks')
     plt.ylabel('test performance')
