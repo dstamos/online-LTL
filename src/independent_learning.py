@@ -17,28 +17,18 @@ def train_test_itl(data, settings):
 
         kf = KFold(n_splits=5)
         kf.get_n_splits(x_merged)
-<<<<<<< HEAD
-
         preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
-=======
->>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
 
         best_performance = np.Inf
         best_param = None
         for regul_param in settings['regul_param_range']:
-<<<<<<< HEAD
-=======
-            print(regul_param, 'k')
->>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
             curr_val_performances = []
             for train_index, test_index in kf.split(x_merged):
                 x_tr, x_val = x_merged[train_index], x_merged[test_index]
                 y_tr, y_val = y_merged[train_index], y_merged[test_index]
 
-<<<<<<< HEAD
-=======
                 preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
->>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
+
                 x_tr, y_tr = preprocessing.transform(x_tr, y_tr, fit=True, multiple_tasks=False)
                 x_val, y_val = preprocessing.transform(x_val, y_val, fit=False, multiple_tasks=False)
 
@@ -54,10 +44,6 @@ def train_test_itl(data, settings):
                 best_param = regul_param
 
         # Retrain on full training set
-<<<<<<< HEAD
-=======
-        preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
->>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
         x_tr, y_tr = preprocessing.transform(x_merged, y_merged, fit=True, multiple_tasks=False)
         x_test, y_test = preprocessing.transform(data['test_tasks_test_features'][task_idx], data['test_tasks_test_labels'][task_idx], fit=False, multiple_tasks=False)
 

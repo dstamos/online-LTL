@@ -22,10 +22,6 @@ def train_test_naive(data, settings):
         test_predictions = prediction_value * np.ones(len(y_test))
         all_performances.append(mae_clip(y_test, test_predictions))
     test_performance = np.median(all_performances)
-<<<<<<< HEAD
     print(f'{"Naive":12s} | test performance: {test_performance:12.5f} | {time() - tt:5.2f}sec')
-=======
-    print(f'Naive | test performance: {test_performance:12.5f} | {time() - tt:5.2f}sec')
->>>>>>> bc1940b02fdeb45596d3a6f230cec854d8338542
 
     return test_performance
