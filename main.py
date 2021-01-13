@@ -4,6 +4,7 @@ import os
 import numpy as np
 from src.ltl import train_test_meta
 from src.independent_learning import train_test_itl
+from src.naive_baseline import train_test_naive
 from src.data_management_essex import load_data_essex, split_data_essex
 import pickle
 
@@ -108,6 +109,7 @@ def main(settings, seed):
 
     test_performance_itl = train_test_itl(data, settings)
     # best_model_meta, test_performance_meta = train_test_meta(data, settings)
+    test_performance_naive = train_test_naive(data, settings)
 
     os.makedirs('results', exist_ok=True)
     filename = './results/' + 'seed_' + str(seed) + '.pckl'
@@ -119,6 +121,7 @@ def main(settings, seed):
     fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
 
     ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_itl] * len(data['training_tasks_indexes']), linewidth=2, color='tab:red', label='Independent Learning')
+    ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_naive] * len(data['training_tasks_indexes']), linewidth=2, color='tab:gray', label='Naive Baseline')
     # ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
 
     plt.xlabel('# training tasks')
