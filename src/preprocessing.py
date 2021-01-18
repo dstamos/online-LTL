@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg.linalg import norm
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class ThressholdScaler(BaseEstimator, TransformerMixin):
@@ -22,3 +23,17 @@ class ThressholdScaler(BaseEstimator, TransformerMixin):
     def fit_transform(self, X, y=None, **fit_params):
         self.fit(X, y)
         return self.transform(X, y)
+
+
+class BallScaling(BaseEstimator, TransformerMixin):
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X = X / norm(X, axis=0, keepdims=True)
+        return X
+
+    def fit_transform(self, X, y=None, **fit_params):
+        self.fit(X, y)
+        return self.transform(X, y)
+
