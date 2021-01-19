@@ -22,6 +22,12 @@ def load_data_essex(path='', delete0=True, useStim=True, useRT=True):
             label.append(extra[val, 3])
     return feat, label
 
+def load_data_Chris(path=''):
+    l = np.load(path+'alllabels.npy', allow_pickle=True)
+    f = np.load(path+'allfeatures.npy', allow_pickle=True)
+    feat = [i for i in f]
+    label = [i for i in l]
+    return feat, label
 
 def split_data_essex(all_features, all_labels, train, retrain, test):
     """

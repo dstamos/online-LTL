@@ -1,7 +1,7 @@
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import Ridge as lr
 from src.preprocessing import ThressholdScaler, BallScaling
-from src.loadData import load_data_essex
+from src.loadData import load_data_essex, load_data_Chris
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_val_predict as cv
 import numpy as np
@@ -19,7 +19,7 @@ class BaselineEstimator(BaseEstimator, ClassifierMixin):
         return np.zeros((np.shape(X)[0],1)) + self.pred
 
 if __name__ == "__main__":
-    all_features, all_labels = load_data_essex()
+    all_features, all_labels = load_data_Chris()
     nSubj = len(all_features)
 
     basePipe = Pipeline([('Th', ThressholdScaler()), ('Sc', StandardScaler()), ('Bs', BallScaling()), ('pred', BaselineEstimator())])
