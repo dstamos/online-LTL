@@ -23,7 +23,7 @@ def train_test_meta(data, settings, verbose=True):
         model_ltl.fit_meta(tr_tasks_tr_features, tr_tasks_tr_labels)
 
         # Check performance on the validation tasks.
-        val_tasks_tr_features, val_tasks_tr_labels = preprocessing.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'], fit=False)
+        val_tasks_tr_features, val_tasks_tr_labels = preprocessing.transform(data['val_tasks_tr_features'], data['val_tasks_tr_labels'], fit=True)
         val_tasks_val_features, val_tasks_val_labels = preprocessing.transform(data['val_tasks_val_features'], data['val_tasks_val_labels'], fit=False)
         if settings['fine_tune'] is True:
             all_weight_vectors = model_ltl.fine_tune(val_tasks_tr_features, val_tasks_tr_labels, regul_param=regul_param)
@@ -41,9 +41,9 @@ def train_test_meta(data, settings, verbose=True):
     # Test
     # x_merged = [np.concatenate([data['test_tasks_tr_features'][task_idx], data['test_tasks_val_features'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
     # y_merged = [np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
-    # test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(x_merged, y_merged, fit=False)
+    # test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(x_merged, y_merged, fit=True)
 
-    test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(data['test_tasks_tr_features'], data['test_tasks_tr_labels'], fit=False)
+    test_tasks_tr_features, test_tasks_tr_labels = preprocessing.transform(data['test_tasks_tr_features'], data['test_tasks_tr_labels'], fit=True)
     test_tasks_val_features, test_tasks_val_labels = preprocessing.transform(data['test_tasks_val_features'], data['test_tasks_val_labels'], fit=False)
     test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False)
     if settings['fine_tune'] is True:

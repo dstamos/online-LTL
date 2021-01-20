@@ -12,6 +12,7 @@ def train_test_naive(data, settings):
     tt = time()
     all_performances = []
     for task_idx in range(len(data['test_tasks_indexes'])):
+        # TODO Add cross-validation
         # First merge, since there is no validation in this naive approach.
         y_tr = np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]])
         y_test = data['test_tasks_val_labels'][task_idx]

@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 
-def load_data_essex(delete0=True, useStim=True, useRT=True):
+def load_data_essex_one(delete0=True, useStim=True, useRT=True):
     extra = np.load('./data/extra.npy')
     if useStim:
         stim = np.load('./data/stimFeatures.npy')
@@ -37,6 +37,22 @@ def load_data_essex(delete0=True, useStim=True, useRT=True):
     return feat, label, experiment_names
 
 
+def load_data_essex_two(useRT=None):
+
+    import mat73
+    features = mat73.loadmat('./data/features.mat')
+    features = features['features']
+    labels = mat73.loadmat('./data/labels.mat')
+    labels = labels['savelabel']
+
+    all_experiment_names = []
+    for i in range(len(labels)):
+        task_name = 'exp_' + str(i)
+        all_experiment_names.append(task_name)
+
+    return features, labels, all_experiment_names
+
+
 def split_data_essex(all_features, all_labels, all_experiment_names, settings):
     """
     Training tasks only have training data.
@@ -58,7 +74,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
     n_experiments_per_subject = 3
     n_all_subjects = len(all_features) // n_experiments_per_subject  # Hardcoded - the assumption is that all subjects had 3 days of experiments
     n_test_subjects = settings['n_test_subjects']
-    test_subjects = np.random.choice(range(n_all_subjects), size=n_test_subjects, replace=False)
+    # test_subjects = np.random.choice(all_subjects, size=n_test_subjects, replace=False)
+    test_subjects = [0]
 
     test_tasks_indexes = []
     for test_subject in test_subjects:
@@ -69,6 +86,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
     for idx in test_tasks_indexes:
         tasks_indexes.remove(idx)
     # Validation tasks are picked randomly (not from the same person)
+    # TODO Check the temporal business (only validate on later dates.
     training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
 
     tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
