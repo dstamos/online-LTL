@@ -22,7 +22,7 @@ def main(settings, seed):
 
     test_performance_naive = train_test_naive(data, settings)
     test_performance_itl = train_test_itl(data, settings)
-    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
+    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=True)
 
     foldername = 'results-fixed_3-val_3-with_preproc_refit-inner_3_full_tr'
     os.makedirs(foldername, exist_ok=True)
@@ -40,8 +40,9 @@ def main(settings, seed):
     # plt.xlabel('# training tasks')
     # plt.ylabel('test performance')
     # plt.legend()
-    # plt.savefig('temp' + '.png', pad_inches=0)
+    # plt.savefig('cv' + '.png', pad_inches=0)
     # plt.pause(0.1)
+    # exit()
     # plt.show()
 
 
@@ -72,13 +73,15 @@ if __name__ == "__main__":
     tr_tasks_tr_points_pct = 1
 
     # Dataset split for validation tasks (only training+validation points)
-    val_tasks_tr_points_pct = 0.5
-    val_tasks_val_points_pct = 0.5
+    val_tasks_tr_points_pct = 0.2
+    val_tasks_val_points_pct = 0.3
+    val_tasks_test_points_pct = 0.5
+    assert val_tasks_tr_points_pct + val_tasks_val_points_pct + val_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
 
     # Dataset split for test tasks
-    test_tasks_tr_points_pct = 0.6
-    test_tasks_val_points_pct = 0.2
-    test_tasks_test_points_pct = 0.2
+    test_tasks_tr_points_pct = 0.2
+    test_tasks_val_points_pct = 0.3
+    test_tasks_test_points_pct = 0.5
     assert test_tasks_tr_points_pct + test_tasks_val_points_pct + test_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
 
     options = {'regul_param_range': regul_param_range,
@@ -88,6 +91,7 @@ if __name__ == "__main__":
                'tr_tasks_tr_points_pct': tr_tasks_tr_points_pct,
                'val_tasks_tr_points_pct': val_tasks_tr_points_pct,
                'val_tasks_val_points_pct': val_tasks_val_points_pct,
+               'val_tasks_test_points_pct': val_tasks_test_points_pct,
                'test_tasks_tr_points_pct': test_tasks_tr_points_pct,
                'test_tasks_val_points_pct': test_tasks_val_points_pct,
                'test_tasks_test_points_pct': test_tasks_test_points_pct}
