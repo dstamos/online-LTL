@@ -18,13 +18,13 @@ def main(settings, seed):
 
     # Load and split data datasets
     all_features, all_labels, all_experiment_names = load_data_essex_one(useRT=False)
-    data = split_data_essex(all_features, all_labels, all_experiment_names, settings)
+    data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False)
 
     test_performance_naive = train_test_naive(data, settings)
     test_performance_itl = train_test_itl(data, settings)
-    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=True)
+    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
 
-    foldername = 'results-fixed_3-val_3-with_preproc_refit-inner_3_full_tr'
+    foldername = 'results-christoph_data'
     os.makedirs(foldername, exist_ok=True)
     filename = './' + foldername + '/' + 'seed_' + str(seed) + '.pckl'
     pickle.dump([test_performance_naive, test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)

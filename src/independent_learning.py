@@ -27,8 +27,6 @@ def train_test_itl(data, settings):
                 x_tr, x_val = x_merged[train_index], x_merged[test_index]
                 y_tr, y_val = y_merged[train_index], y_merged[test_index]
 
-                preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
-
                 x_tr, y_tr = preprocessing.transform(x_tr, y_tr, fit=True, multiple_tasks=False)
                 x_val, y_val = preprocessing.transform(x_val, y_val, fit=False, multiple_tasks=False)
 
@@ -38,22 +36,22 @@ def train_test_itl(data, settings):
                 val_predictions = model_itl.predict(x_val)
                 val_performance = mae_clip(y_val, val_predictions)
                 curr_val_performances.append(val_performance)
-            average_val_performance = np.mean(curr_val_performances)
+            average_val_performance = np.min(curr_val_performances)
             if average_val_performance < best_performance:
                 best_performance = average_val_performance
                 best_param = regul_param
 
         # Retrain on full training set
-        x_tr, y_tr = preprocessing.transform(x_merged, y_merged, fit=True, multiple_tasks=False)
+        x_merged, y_merged = preprocessing.transform(x_merged, y_merged, fit=True, multiple_tasks=False)
         x_test, y_test = preprocessing.transform(data['test_tasks_test_features'][task_idx], data['test_tasks_test_labels'][task_idx], fit=False, multiple_tasks=False)
 
         model_itl = ITL(best_param)
-        model_itl.fit(x_tr, y_tr)
+        model_itl.fit(x_merged, y_merged)
 
         # Testing
         test_predictions = model_itl.predict(x_test)
         all_performances.append(mae_clip(y_test, test_predictions))
-    test_performance = np.median(all_performances)
+    test_performance = np.mean(all_performances)
     print(f'{"Independent":12s} | test performance: {test_performance:12.5f} | {time() - tt:5.2f}sec')
 
     return test_performance

@@ -30,7 +30,7 @@ def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=
         for task_idx in range(len(all_true_labels)):
             curr_perf = mae_clip(all_true_labels[task_idx], all_predictions[task_idx])
             performances.append(curr_perf)
-        performance = np.median(performances)
+        performance = np.mean(performances)
         return performance
     else:
         all_performances = []
@@ -39,7 +39,7 @@ def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=
             for task_idx in range(len(all_true_labels)):
                 curr_perf = mae_clip(all_true_labels[task_idx], all_predictions[metamodel_idx][task_idx])
                 metamodel_performances.append(curr_perf)
-            curr_metamodel_performance = np.median(metamodel_performances)
+            curr_metamodel_performance = np.mean(metamodel_performances)
             all_performances.append(curr_metamodel_performance)
             # TODO Recover individual errors for each task as well. This way it can be investigate how the errors progress for each task
         return np.array(all_performances)

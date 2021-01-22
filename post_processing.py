@@ -7,7 +7,7 @@ font = {'size': 48}
 matplotlib.rc('font', **font)
 
 
-foldername = 'results-fixed_3-val_3-with_preproc_refit-inner_3_full_tr'
+foldername = 'results-christoph_data'
 seed_range = range(1, 11)
 
 all_seeds_naive = []

@@ -39,21 +39,26 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True):
 
 def load_data_essex_two(useRT=None):
 
-    import mat73
-    features = mat73.loadmat('./data/features.mat')
-    features = features['features']
-    labels = mat73.loadmat('./data/labels.mat')
-    labels = labels['savelabel']
+    l = np.load('./data/alllabels_chris.npy', allow_pickle=True)
+    f = np.load('./data/allfeatures_chris.npy', allow_pickle=True)
+    features = [i for i in f]
+    labels = [i for i in l]
 
-    all_experiment_names = []
-    for i in range(len(labels)):
-        task_name = 'exp_' + str(i)
-        all_experiment_names.append(task_name)
+    # The assumption is that each subject had 3 days of experiments.
+    # The point of this is to make it easy to check for mistakes down the line
+    n_subjects = len(features) // 3
+    experiment_names = []
+    for curr_subject in range(n_subjects):
+        day = 0
+        while day < 3:
+            task_name = 'subject_' + str(curr_subject) + '-day_' + str(day)
+            experiment_names.append(task_name)
+            day = day + 1
 
-    return features, labels, all_experiment_names
+    return features, labels, experiment_names
 
 
-def split_data_essex(all_features, all_labels, all_experiment_names, settings):
+def split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=True):
     """
     Training tasks only have training data.
     Validation tasks only have training and test data.
@@ -75,7 +80,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
     n_all_subjects = len(all_features) // n_experiments_per_subject  # Hardcoded - the assumption is that all subjects had 3 days of experiments
     n_test_subjects = settings['n_test_subjects']
     # test_subjects = np.random.choice(all_subjects, size=n_test_subjects, replace=False)
-    test_subjects = [0]
+    test_subjects = [8]
 
     test_tasks_indexes = []
     for test_subject in test_subjects:
@@ -112,7 +117,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
         tr_tasks_tr_features.append(training_features)
         tr_tasks_tr_labels.append(training_labels)
 
-        print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d}')
+        if verbose is True:
+            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d}')
 
     # Validation tasks (training and test data)
     val_tasks_tr_features = []
@@ -143,7 +149,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
         val_tasks_test_features.append(test_features)
         val_tasks_test_labels.append(test_labels)
 
-        print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
+        if verbose is True:
+            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
 
     # Test tasks (training, validation and test data)
     test_tasks_tr_features = []
@@ -174,7 +181,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings):
         test_tasks_test_features.append(test_features)
         test_tasks_test_labels.append(test_labels)
 
-        print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
+        if verbose is True:
+            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
     print('\n')
     data = {'training_tasks_indexes': training_tasks_indexes,
             'validation_tasks_indexes': validation_tasks_indexes,
