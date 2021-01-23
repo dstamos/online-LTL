@@ -5,6 +5,7 @@ import numpy as np
 from src.ltl import train_test_meta
 from src.independent_learning import train_test_itl
 from src.naive_baseline import train_test_naive
+from src.single_task import train_test_single_task
 from src.data_management_essex import load_data_essex_one, load_data_essex_two, split_data_essex
 import pickle
 import sys
@@ -21,29 +22,31 @@ def main(settings, seed):
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False)
 
     test_performance_naive = train_test_naive(data, settings)
+    test_performance_single_task = train_test_single_task(data, settings)
     test_performance_itl = train_test_itl(data, settings)
     best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
 
     foldername = 'results-christoph_data'
     os.makedirs(foldername, exist_ok=True)
     filename = './' + foldername + '/' + 'seed_' + str(seed) + '.pckl'
-    pickle.dump([test_performance_naive, test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+    pickle.dump([test_performance_naive, test_performance_single_task, test_performance_itl, test_performance_meta, data['test_tasks_indexes'], settings], open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
 
-    # font = {'size': 24}
-    # matplotlib.rc('font', **font)
-    # my_dpi = 100
-    # fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
-    # ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_itl] * len(data['training_tasks_indexes']), linewidth=2, color='tab:red', label='Independent Learning')
-    # ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_naive] * len(data['training_tasks_indexes']), linewidth=2, color='tab:gray', label='Naive Baseline')
-    # ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
-    #
-    # plt.xlabel('# training tasks')
-    # plt.ylabel('test performance')
-    # plt.legend()
-    # plt.savefig('cv' + '.png', pad_inches=0)
-    # plt.pause(0.1)
+    font = {'size': 24}
+    matplotlib.rc('font', **font)
+    my_dpi = 100
+    fig, ax = plt.subplots(figsize=(1920 / my_dpi, 1080 / my_dpi), facecolor='white', dpi=my_dpi, nrows=1, ncols=1)
+    ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_itl] * len(data['training_tasks_indexes']), linewidth=2, color='tab:red', label='Independent Learning')
+    ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_naive] * len(data['training_tasks_indexes']), linewidth=2, color='tab:gray', label='Naive Baseline')
+    ax.plot(range(1, len(data['training_tasks_indexes']) + 1), [test_performance_single_task] * len(data['training_tasks_indexes']), linewidth=2, color='black', label='Single task')
+    ax.plot(range(1, len(test_performance_meta) + 1), test_performance_meta, linewidth=2, color='tab:blue', label='Bias Meta-learning')
+
+    plt.xlabel('# training tasks')
+    plt.ylabel('test performance')
+    plt.legend()
+    plt.savefig('cv' + '.png', pad_inches=0)
+    plt.pause(0.1)
     # exit()
-    # plt.show()
+    plt.show()
 
 
 if __name__ == "__main__":
