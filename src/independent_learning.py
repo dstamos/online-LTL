@@ -15,7 +15,13 @@ def train_test_itl(data, settings):
         x_merged = np.concatenate([data['test_tasks_tr_features'][task_idx], data['test_tasks_val_features'][task_idx]])
         y_merged = np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]])
 
-        kf = KFold(n_splits=5)
+        cv_splits = 5
+        if len(y_merged) < cv_splits:
+            # In the case we don't enough enough data for 5-fold cross-validation for training (cold start), just use random data.
+            x_merged = np.random.randn(*np.concatenate(data['test_tasks_test_features']).shape)
+            y_merged = np.random.uniform(0, 1, len(np.concatenate(data['test_tasks_test_labels'])))
+
+        kf = KFold(n_splits=cv_splits)
         kf.get_n_splits(x_merged)
         preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
 
@@ -36,7 +42,7 @@ def train_test_itl(data, settings):
                 val_predictions = model_itl.predict(x_val)
                 val_performance = mae_clip(y_val, val_predictions)
                 curr_val_performances.append(val_performance)
-            average_val_performance = np.min(curr_val_performances)
+            average_val_performance = np.mean(curr_val_performances)
             if average_val_performance < best_performance:
                 best_performance = average_val_performance
                 best_param = regul_param

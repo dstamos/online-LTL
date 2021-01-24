@@ -8,9 +8,17 @@ from sklearn.model_selection import KFold
 
 
 def train_test_meta(data, settings, verbose=True):
+    # Create the test tasks here. It's done early to know if we have enough training points on the test tasks for a non-"cold start" problem.
+    x_test_tasks_merged = [np.concatenate([data['test_tasks_tr_features'][task_idx], data['test_tasks_val_features'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
+    y_test_tasks_merged = [np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
+
     # Preprocess the data
-    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
-    tr_tasks_tr_features, tr_tasks_tr_labels = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], fit=True)
+    if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+        preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
+    else:
+        # In the case we don't have training data on the test tasks or we just don't want to fine-tune.
+        preprocessing = PreProcess(threshold_scaling=False, standard_scaling=False, inside_ball_scaling=True, add_bias=True)
+    tr_tasks_tr_features, tr_tasks_tr_labels = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], fit=True, multiple_tasks=True)
 
     # Training
     tt = time()
@@ -29,7 +37,8 @@ def train_test_meta(data, settings, verbose=True):
 
         _, _ = preprocessing.transform(x_val_tasks_merged, y_val_tasks_merged, fit=True, multiple_tasks=True)
         val_tasks_test_features, val_tasks_test_labels = preprocessing.transform(data['val_tasks_test_features'], data['val_tasks_test_labels'], fit=False, multiple_tasks=True)
-        if settings['fine_tune'] is True:
+        if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+            # If we don't have enough data on the test tasks to fine-tune, the training process should not fine-tune on the validation tasks either.
             all_weight_vectors = model_ltl.fine_tune(x_val_tasks_merged, y_val_tasks_merged, settings['regul_param_range'], preprocessing)
             val_task_predictions = model_ltl.predict(val_tasks_test_features, all_weight_vectors)
         else:
@@ -43,12 +52,10 @@ def train_test_meta(data, settings, verbose=True):
             print(f'{"LTL":10s} | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
 
     # Test
-    x_test_tasks_merged = [np.concatenate([data['test_tasks_tr_features'][task_idx], data['test_tasks_val_features'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
-    y_test_tasks_merged = [np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
-
-    _, _ = preprocessing.transform(x_test_tasks_merged, y_test_tasks_merged, fit=True, multiple_tasks=True)
-    test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False)
-    if settings['fine_tune'] is True:
+    if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+        _, _ = preprocessing.transform(x_test_tasks_merged, y_test_tasks_merged, fit=True, multiple_tasks=True)
+    test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False, multiple_tasks=True)
+    if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
         all_weight_vectors = best_model_ltl.fine_tune(x_test_tasks_merged, y_test_tasks_merged, settings['regul_param_range'], preprocessing)
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
     else:
@@ -140,9 +147,11 @@ class BiasLTL:
 
         return all_weight_vectors
 
-    @staticmethod
-    def predict(all_features, weight_vectors=None):
-        # if weight_vectors is None:
+    def predict(self, all_features, weight_vectors=None):
+        if weight_vectors is None:
+            # If weight_vectors is None, then we just use the raw metaparameters as the weight vectors. It's either the case of no fine-tuning or not enough data to fine-tune.
+            weight_vectors = [[self.all_metaparameters_[meta_model_idx]] * len(all_features) for meta_model_idx in range(len(self.all_metaparameters_))]
+
         all_predictions = []
         for all_current_vectors in weight_vectors:
             curr_predictions = []

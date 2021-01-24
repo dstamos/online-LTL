@@ -78,9 +78,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     # Pick the test_subjects, find the corresponding test_tasks_indexes.
     n_experiments_per_subject = 3
     n_all_subjects = len(all_features) // n_experiments_per_subject  # Hardcoded - the assumption is that all subjects had 3 days of experiments
-    n_test_subjects = settings['n_test_subjects']
-    # test_subjects = np.random.choice(all_subjects, size=n_test_subjects, replace=False)
-    test_subjects = [8]
+    test_subjects = [settings['test_subject']]
 
     test_tasks_indexes = []
     for test_subject in test_subjects:
@@ -183,7 +181,6 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
 
         if verbose is True:
             print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
-    print('\n')
     data = {'training_tasks_indexes': training_tasks_indexes,
             'validation_tasks_indexes': validation_tasks_indexes,
             'test_tasks_indexes': test_tasks_indexes,
