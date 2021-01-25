@@ -13,7 +13,8 @@ def train_test_meta(data, settings, verbose=True):
     y_test_tasks_merged = [np.concatenate([data['test_tasks_tr_labels'][task_idx], data['test_tasks_val_labels'][task_idx]]) for task_idx in range(len(data['test_tasks_indexes']))]
 
     # Preprocess the data
-    if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+    fine_tuning_test = settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))])
+    if fine_tuning_test:
         preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=True, add_bias=True)
     else:
         # In the case we don't have training data on the test tasks or we just don't want to fine-tune.
@@ -37,7 +38,7 @@ def train_test_meta(data, settings, verbose=True):
 
         _, _ = preprocessing.transform(x_val_tasks_merged, y_val_tasks_merged, fit=True, multiple_tasks=True)
         val_tasks_test_features, val_tasks_test_labels = preprocessing.transform(data['val_tasks_test_features'], data['val_tasks_test_labels'], fit=False, multiple_tasks=True)
-        if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+        if fine_tuning_test:
             # If we don't have enough data on the test tasks to fine-tune, the training process should not fine-tune on the validation tasks either.
             all_weight_vectors = model_ltl.fine_tune(x_val_tasks_merged, y_val_tasks_merged, settings['regul_param_range'], preprocessing)
             val_task_predictions = model_ltl.predict(val_tasks_test_features, all_weight_vectors)
@@ -52,10 +53,11 @@ def train_test_meta(data, settings, verbose=True):
             print(f'{"LTL":10s} | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
 
     # Test
-    if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+    if fine_tuning_test:
         _, _ = preprocessing.transform(x_test_tasks_merged, y_test_tasks_merged, fit=True, multiple_tasks=True)
+
     test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False, multiple_tasks=True)
-    if settings['fine_tune'] is True and np.all([len(y_test_tasks_merged[task_idx]) > 5 for task_idx in range(len(y_test_tasks_merged))]):
+    if fine_tuning_test:
         all_weight_vectors = best_model_ltl.fine_tune(x_test_tasks_merged, y_test_tasks_merged, settings['regul_param_range'], preprocessing)
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
     else:
@@ -85,6 +87,29 @@ class BiasLTL:
             mean_vector = self.metaparameter_
         else:
             mean_vector = np.random.randn(all_features[0].shape[1]) / norm(np.random.randn(all_features[0].shape[1]))
+
+        # print(len(all_features))
+        # all_metaparameters = []
+        # n_epochs = 3
+        # iteration = 0
+        # for curr_epoch in range(n_epochs):
+        #     shuffled_task_indexes = np.random.permutation(range(len(all_features)))
+        #     for inner_iter, task_idx in enumerate(shuffled_task_indexes):
+        #         iteration = iteration + 1
+        #         mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=iteration, inner_iter_cap=3)
+        #         # TODO Rerun with inner_iter replaced with iteration
+        #         if all_metaparameters:
+        #             mean_vector = (iteration * all_metaparameters[-1] + mean_vector) / (iteration + 1)
+        #         all_metaparameters.append(mean_vector)
+        #         #
+        #         # if curr_epoch == n_epochs - 1:
+        #         #     all_metaparameters.append(mean_vector)
+        #
+        #         # TODO Rerun with this only (only last epoch gets the average)
+        #         # if curr_epoch == n_epochs - 1:
+        #         #     mean_vector = (inner_iter * all_metaparameters[-1] + mean_vector) / (inner_iter + 1)
+        #         all_metaparameters.append(mean_vector)
+        # all_metaparameters = all_metaparameters[-len(all_features):]
 
         all_metaparameters = []
         for task_idx in range(len(all_features)):
@@ -171,6 +196,10 @@ class BiasLTL:
         def grad(curr_h):
             grad_h = x_n_hat.T @ (x_n_hat @ curr_h - y_n_hat)
             return grad_h
+
+        # prev_h = h
+        # step_size = np.sqrt(2) * step_size_bit / ((step_size_bit + 1) * np.sqrt(curr_iteration))
+        # h = prev_h - step_size * grad(prev_h)
 
         i = 0
         curr_iteration = curr_iteration * inner_iter_cap

@@ -7,8 +7,11 @@ from sklearn.metrics import mean_squared_error
 from src.utilities import mae_clip
 
 
-def train_test_naive(data, settings):
-    # "Training"
+def train_test_naive_transfer(data, settings):
+    # Merge training/validation tasks (including training points from test tasks, if they exist)
+    # Find average label
+    # Apply on test tasks
+
     tt = time()
     all_performances = []
     for task_idx in range(len(data['test_tasks_indexes'])):
