@@ -26,13 +26,13 @@ def main(settings, seed):
     # test_performance_naive_transfer = train_test_naive_transfer(data, settings)
     test_performance_naive_transfer = np.nan
 
-    test_performance_single_task = train_test_single_task(data, settings)
-    # test_performance_single_task = np.nan
+    # test_performance_single_task = train_test_single_task(data, settings)
+    test_performance_single_task = np.nan
 
     test_performance_itl = train_test_itl(data, settings)
 
-    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
-    # test_performance_meta = [np.nan]    # Because this output is a list by default
+    # best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
+    test_performance_meta = [np.nan]    # Because this output is a list by default
 
     results = {'test_performance_naive': test_performance_naive,
                'test_performance_naive_transfer': test_performance_naive_transfer,
