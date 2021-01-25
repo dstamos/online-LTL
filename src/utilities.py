@@ -1,5 +1,7 @@
 from sklearn.metrics import mean_squared_error
 import numpy as np
+import pickle
+import os
 
 
 def multiple_tasks_mse(all_true_labels, all_predictions, error_progression=False):
@@ -47,3 +49,9 @@ def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=
 
 def mae_clip(labels, predictions):
     return np.median(np.clip(np.abs(labels - predictions), 0, 1))
+
+
+def save_results(results, foldername='results', filename='temp'):
+    os.makedirs(foldername, exist_ok=True)
+    filename = './' + foldername + '/' + filename + '.pckl'
+    pickle.dump(results, open(filename, "wb"), protocol=pickle.HIGHEST_PROTOCOL)

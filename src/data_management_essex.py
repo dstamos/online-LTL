@@ -94,10 +94,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
 
     tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
     val_tasks_tr_points_pct = settings['val_tasks_tr_points_pct']
-    val_tasks_val_points_pct = settings['val_tasks_val_points_pct']
     val_tasks_test_points_pct = settings['val_tasks_test_points_pct']
     test_tasks_tr_points_pct = settings['test_tasks_tr_points_pct']
-    test_tasks_val_points_pct = settings['test_tasks_val_points_pct']
     test_tasks_test_points_pct = settings['test_tasks_test_points_pct']
 
     # Training tasks (only training data)
@@ -121,8 +119,6 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     # Validation tasks (training and test data)
     val_tasks_tr_features = []
     val_tasks_tr_labels = []
-    val_tasks_val_features = []
-    val_tasks_val_labels = []
     val_tasks_test_features = []
     val_tasks_test_labels = []
     for counter, task_index in enumerate(validation_tasks_indexes):
@@ -131,30 +127,24 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         n_all_points = len(y)
         shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
-        n_val_points = int(val_tasks_val_points_pct * n_all_points)
         n_test_points = int(test_tasks_test_points_pct * n_all_points)
+
         training_features = x[shuffled_points_indexes[:n_tr_points], :]
         training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        validation_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points], :]
-        validation_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points]]
-        test_features = x[shuffled_points_indexes[n_tr_points + n_val_points + 1:n_tr_points + n_val_points + n_test_points], :]
-        test_labels = y[shuffled_points_indexes[n_tr_points + n_val_points + 1:n_tr_points + n_val_points + n_test_points]]
+        test_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points], :]
+        test_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points]]
 
         val_tasks_tr_features.append(training_features)
         val_tasks_tr_labels.append(training_labels)
-        val_tasks_val_features.append(validation_features)
-        val_tasks_val_labels.append(validation_labels)
         val_tasks_test_features.append(test_features)
         val_tasks_test_labels.append(test_labels)
 
         if verbose is True:
-            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
+            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_test_points:4d}')
 
-    # Test tasks (training, validation and test data)
+    # Test tasks (training and test data)
     test_tasks_tr_features = []
     test_tasks_tr_labels = []
-    test_tasks_val_features = []
-    test_tasks_val_labels = []
     test_tasks_test_features = []
     test_tasks_test_labels = []
     for counter, task_index in enumerate(test_tasks_indexes):
@@ -163,24 +153,20 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         n_all_points = len(y)
         shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
-        n_val_points = int(test_tasks_val_points_pct * n_all_points)
         n_test_points = int(test_tasks_test_points_pct * n_all_points)
+
         training_features = x[shuffled_points_indexes[:n_tr_points], :]
         training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        validation_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points], :]
-        validation_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_val_points]]
-        test_features = x[shuffled_points_indexes[n_tr_points + n_val_points + 1:n_tr_points + n_val_points + n_test_points], :]
-        test_labels = y[shuffled_points_indexes[n_tr_points + n_val_points + 1:n_tr_points + n_val_points + n_test_points]]
+        test_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points], :]
+        test_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points]]
 
         test_tasks_tr_features.append(training_features)
         test_tasks_tr_labels.append(training_labels)
-        test_tasks_val_features.append(validation_features)
-        test_tasks_val_labels.append(validation_labels)
         test_tasks_test_features.append(test_features)
         test_tasks_test_labels.append(test_labels)
 
         if verbose is True:
-            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | val: {n_val_points:4d} | test: {n_test_points:4d}')
+            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_test_points:4d}')
     data = {'training_tasks_indexes': training_tasks_indexes,
             'validation_tasks_indexes': validation_tasks_indexes,
             'test_tasks_indexes': test_tasks_indexes,
@@ -190,15 +176,11 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             # Validation tasks
             'val_tasks_tr_features': val_tasks_tr_features,
             'val_tasks_tr_labels': val_tasks_tr_labels,
-            'val_tasks_val_features': val_tasks_val_features,
-            'val_tasks_val_labels': val_tasks_val_labels,
             'val_tasks_test_features': val_tasks_test_features,
             'val_tasks_test_labels': val_tasks_test_labels,
             # Test tasks
             'test_tasks_tr_features': test_tasks_tr_features,
             'test_tasks_tr_labels': test_tasks_tr_labels,
-            'test_tasks_val_features': test_tasks_val_features,
-            'test_tasks_val_labels': test_tasks_val_labels,
             'test_tasks_test_features': test_tasks_test_features,
             'test_tasks_test_labels': test_tasks_test_labels}
     return data

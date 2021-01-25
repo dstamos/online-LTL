@@ -16,8 +16,8 @@ def train_test_single_task(data, settings):
     If the number of training points on the test tasks is 0, then it's basically pure "transfer learning" from the training+ validation tasks onto the test tasks.
     """
 
-    features_to_be_merged = data['tr_tasks_tr_features'] + data['val_tasks_tr_features'] + data['val_tasks_val_features'] + data['val_tasks_test_features'] + data['test_tasks_tr_features'] + data['test_tasks_val_features']
-    labels_to_be_merged = data['tr_tasks_tr_labels'] + data['val_tasks_tr_labels'] + data['val_tasks_val_labels'] + data['val_tasks_test_labels'] + data['test_tasks_tr_labels'] + data['test_tasks_val_labels']
+    features_to_be_merged = data['tr_tasks_tr_features'] + data['val_tasks_tr_features'] + data['val_tasks_test_features'] + data['test_tasks_tr_features']
+    labels_to_be_merged = data['tr_tasks_tr_labels'] + data['val_tasks_tr_labels'] + data['val_tasks_test_labels'] + data['test_tasks_tr_labels']
     x_merged = np.concatenate(features_to_be_merged)
     y_merged = np.concatenate(labels_to_be_merged)
 
