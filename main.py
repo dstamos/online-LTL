@@ -23,7 +23,7 @@ def main(settings, seed):
 
     test_performance_naive = train_test_naive(data, settings)
 
-    # test_performance_naive_transfer = train_test_naive_transfer(data, settings)
+    # test_performance_naive_transfer = train_test_naive_transfer(data, settings) # TODO
     test_performance_naive_transfer = np.nan
 
     # test_performance_single_task = train_test_single_task(data, settings)
