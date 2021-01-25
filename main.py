@@ -31,7 +31,7 @@ def main(settings, seed):
 
     test_performance_itl = train_test_itl(data, settings)
 
-    # best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
+    # best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=True)
     test_performance_meta = [np.nan]    # Because this output is a list by default
 
     results = {'test_performance_naive': test_performance_naive,
