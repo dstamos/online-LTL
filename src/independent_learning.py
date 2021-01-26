@@ -18,8 +18,8 @@ def train_test_itl(data, settings):
         cv_splits = 5
         if len(y) < cv_splits:
             # In the case we don't enough enough data for 5-fold cross-validation for training (cold start), just use random data.
-            x = np.random.randn(*data['test_tasks_test_features'].shape)
-            y = np.random.uniform(0, 1, len(data['test_tasks_test_labels']))
+            x = np.random.randn(*np.concatenate([data['test_tasks_test_features'][task_idx] for task_idx in range(len(data['test_tasks_test_features']))]).shape)
+            y = np.random.uniform(0, 1, len(x))
 
         kf = KFold(n_splits=cv_splits)
         kf.get_n_splits(x)
