@@ -47,7 +47,7 @@ def load_data_essex_two():
     c = np.load('./data/correctness.npy', allow_pickle=True)
     features = [i for i in f]
     labels = [i for i in l]
-    corr = [i for i in c]
+    corr = [i.astype(bool) for i in c]
 
     # The assumption is that each subject had 3 days of experiments.
     # The point of this is to make it easy to check for mistakes down the line
