@@ -44,8 +44,10 @@ def load_data_essex_two():
 
     l = np.load('./data/alllabels_chris.npy', allow_pickle=True)
     f = np.load('./data/allfeatures_chris.npy', allow_pickle=True)
+    c = np.load('./data/correctness.npy', allow_pickle=True)
     features = [i for i in f]
     labels = [i for i in l]
+    corr = [i for i in c]
 
     # The assumption is that each subject had 3 days of experiments.
     # The point of this is to make it easy to check for mistakes down the line
@@ -58,7 +60,7 @@ def load_data_essex_two():
             experiment_names.append(task_name)
             day = day + 1
 
-    return features, labels, experiment_names
+    return features, labels, experiment_names, corr
 
 
 def split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=True, all_corr=[]):
