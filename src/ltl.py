@@ -1,7 +1,7 @@
 from scipy.linalg import lstsq
 import numpy as np
 from numpy.linalg.linalg import norm
-from src.utilities import multiple_tasks_mae_clip
+from src.utilities import multiple_tasks_mae_clip, multiple_tasks_evaluation
 from time import time
 from src.preprocessing import PreProcess
 from sklearn.model_selection import KFold
@@ -62,8 +62,8 @@ def train_test_meta(data, settings, verbose=True):
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
     else:
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
-    test_performance = multiple_tasks_mae_clip(test_tasks_test_labels, test_task_predictions, error_progression=True)
-    print(f'{"LTL":12s} | test performance: {test_performance[-1]:12.5f} | {time() - tt:5.2f}sec')
+    test_performance = multiple_tasks_evaluation(test_tasks_test_labels, test_task_predictions, data['test_tasks_test_corr'], settings)
+    print(f'{"LTL":12s} | test performance: {test_performance[-1][0]:12.5f} | {time() - tt:5.2f}sec')
     return best_model_ltl, test_performance
 
 

@@ -4,11 +4,13 @@ from sklearn.model_selection import train_test_split
 
 def load_data_essex_one(delete0=True, useStim=True, useRT=True):
     extra = np.load('./data/extra.npy')
+    correct = np.load('./data/corr.npy')
     if useStim:
         stim = np.load('./data/stimFeatures.npy')
     resp = np.load('./data/respFeatures.npy')
     feat = []
     label = []
+    corr = []
     for s in np.unique(extra[:, 0]):
         for d in range(1, 4):
             val = np.logical_and(extra[:, 0] == s, extra[:, 1] == d)
@@ -22,6 +24,7 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True):
                 f = np.concatenate((f, np.expand_dims(extra[val, 2], 1)), 1)
             feat.append(f)
             label.append(extra[val, 3])
+            corr.append(correct[val])
 
     # The assumption is that each subject had 3 days of experiments.
     # The point of this is to make it easy to check for mistakes down the line
@@ -34,10 +37,10 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True):
             experiment_names.append(task_name)
             day = day + 1
 
-    return feat, label, experiment_names
+    return feat, label, experiment_names, corr
 
 
-def load_data_essex_two(useRT=None):
+def load_data_essex_two():
 
     l = np.load('./data/alllabels_chris.npy', allow_pickle=True)
     f = np.load('./data/allfeatures_chris.npy', allow_pickle=True)
@@ -58,7 +61,7 @@ def load_data_essex_two(useRT=None):
     return features, labels, experiment_names
 
 
-def split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=True):
+def split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=True, all_corr=[]):
     """
     Training tasks only have training data.
     Validation tasks only have training and test data.
@@ -67,6 +70,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     :param all_features: list of numpy arrays (n_points, dims)
     :param all_labels:  list of numpy arrays (n_points, )
     :param settings:  dict of settings
+    :param all_corr: List of numpy arrays (n_points, )
     :return:
     """
 
@@ -89,7 +93,6 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     for idx in test_tasks_indexes:
         tasks_indexes.remove(idx)
     # Validation tasks are picked randomly (not from the same person)
-    # TODO Check the temporal business (only validate on later dates.
     training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
 
     tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
@@ -127,12 +130,11 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         n_all_points = len(y)
         shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
-        n_test_points = int(test_tasks_test_points_pct * n_all_points)
 
         training_features = x[shuffled_points_indexes[:n_tr_points], :]
         training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        test_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points], :]
-        test_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points]]
+        test_features = x[shuffled_points_indexes[n_tr_points:], :]
+        test_labels = y[shuffled_points_indexes[n_tr_points:]]
 
         val_tasks_tr_features.append(training_features)
         val_tasks_tr_labels.append(training_labels)
@@ -140,33 +142,64 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         val_tasks_test_labels.append(test_labels)
 
         if verbose is True:
-            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_test_points:4d}')
+            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
 
     # Test tasks (training and test data)
     test_tasks_tr_features = []
     test_tasks_tr_labels = []
     test_tasks_test_features = []
     test_tasks_test_labels = []
-    for counter, task_index in enumerate(test_tasks_indexes):
-        x = all_features[task_index]
-        y = all_labels[task_index]
+    test_tasks_test_corr = []
+    if settings['merge_test']:
+        x = np.zeros((0, all_features[0].shape[1]))
+        y = np.zeros(0)
+        corr = np.zeros(0, bool)
+        for task_index in test_tasks_indexes:
+            x = np.concatenate((x, all_features[task_index]), 0)
+            y = np.concatenate((y, all_labels[task_index]), 0)
+            corr = np.concatenate((corr, all_corr[task_index]), 0)
+        test_tasks_indexes = [0] # There is only one training task
         n_all_points = len(y)
-        shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
-        n_test_points = int(test_tasks_test_points_pct * n_all_points)
 
-        training_features = x[shuffled_points_indexes[:n_tr_points], :]
-        training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        test_features = x[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points], :]
-        test_labels = y[shuffled_points_indexes[n_tr_points + 1:n_tr_points + n_test_points]]
+        training_features = x[:n_tr_points, :]
+        training_labels = y[:n_tr_points]
+        test_features = x[n_tr_points:, :]
+        test_labels = y[n_tr_points:]
+        if all_corr:
+            test_corr = corr[n_tr_points:]
 
         test_tasks_tr_features.append(training_features)
         test_tasks_tr_labels.append(training_labels)
         test_tasks_test_features.append(test_features)
         test_tasks_test_labels.append(test_labels)
+        if all_corr:
+            test_tasks_test_corr.append(test_corr)
 
-        if verbose is True:
-            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_test_points:4d}')
+    else:
+        for task_index in test_tasks_indexes:
+            x = all_features[task_index]
+            y = all_labels[task_index]
+            corr = all_corr[task_index]
+            n_all_points = len(y)
+            n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
+
+            training_features = x[:n_tr_points, :]
+            training_labels = y[:n_tr_points]
+            test_features = x[n_tr_points:, :]
+            test_labels = y[n_tr_points:]
+            if all_corr:
+                test_corr = corr[n_tr_points:]
+
+            test_tasks_tr_features.append(training_features)
+            test_tasks_tr_labels.append(training_labels)
+            test_tasks_test_features.append(test_features)
+            test_tasks_test_labels.append(test_labels)
+            if all_corr:
+                test_tasks_test_corr.append(test_corr)
+
+            if verbose is True:
+                print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
     data = {'training_tasks_indexes': training_tasks_indexes,
             'validation_tasks_indexes': validation_tasks_indexes,
             'test_tasks_indexes': test_tasks_indexes,
@@ -182,7 +215,8 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             'test_tasks_tr_features': test_tasks_tr_features,
             'test_tasks_tr_labels': test_tasks_tr_labels,
             'test_tasks_test_features': test_tasks_test_features,
-            'test_tasks_test_labels': test_tasks_test_labels}
+            'test_tasks_test_labels': test_tasks_test_labels,
+            'test_tasks_test_corr': test_tasks_test_corr}
     return data
 
 

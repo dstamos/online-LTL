@@ -3,7 +3,7 @@ from numpy.linalg import pinv
 from numpy import identity as eye
 from src.preprocessing import PreProcess
 from time import time
-from src.utilities import mae_clip
+from src.utilities import mae_clip, evaluation_methods
 from sklearn.model_selection import KFold
 
 
@@ -55,12 +55,12 @@ def train_test_single_task(data, settings):
     all_performances = []
     for task_idx in range(len(data['test_tasks_indexes'])):
         x_test, y_test = preprocessing.transform(data['test_tasks_test_features'][task_idx], data['test_tasks_test_labels'][task_idx], fit=False, multiple_tasks=False)
-
+        corr = data['test_tasks_test_corr'][task_idx]
         # Testing
         test_predictions = model_itl.predict(x_test)
-        all_performances.append(mae_clip(y_test, test_predictions))
-    test_performance = np.mean(all_performances)
-    print(f'{"Single task":12s} | test performance: {test_performance:12.5f} | {time() - tt:5.2f}sec')
+        all_performances.append(evaluation_methods(y_test, test_predictions, corr, settings))
+    test_performance = np.mean(all_performances, 0)
+    print(f'{"Single task":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
 
     return test_performance
 

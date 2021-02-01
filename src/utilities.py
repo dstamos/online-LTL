@@ -46,9 +46,40 @@ def multiple_tasks_mae_clip(all_true_labels, all_predictions, error_progression=
             # TODO Recover individual errors for each task as well. This way it can be investigate how the errors progress for each task
         return np.array(all_performances)
 
+def multiple_tasks_evaluation(all_true_labels, all_predictions, all_correct, settings):
+        all_performances = []
+        for metamodel_idx in range(len(all_predictions)):
+            metamodel_performances = []
+            for task_idx in range(len(all_true_labels)):
+                curr_perf = evaluation_methods(all_true_labels[task_idx], all_predictions[metamodel_idx][task_idx], all_correct[task_idx], settings)
+                metamodel_performances.append(curr_perf)
+            curr_metamodel_performance = np.mean(metamodel_performances, 0)
+            all_performances.append(curr_metamodel_performance)
+        return np.array(all_performances)
 
 def mae_clip(labels, predictions):
-    return np.median(np.clip(np.abs(labels - predictions), 0, 1))
+    return np.median(np.abs(labels - np.clip(predictions, 0.1, 1)))
+
+def mse_clip(labels, predictions):
+    return np.mean((labels - np.clip(predictions, 0.1, 1))**2)
+
+def mca_clip(predictions, corr):
+    return np.mean(1 - abs(np.clip(predictions, 0, 1) - corr))
+
+def cd_clip(predictions, corr):
+    return np.mean(predictions[corr]) - np.mean(predictions[~corr])
+
+def evaluation_methods(labels, predictions, correct, settings):
+    res = []
+    if 'MAE' in settings['evaluation']:
+        res.append(mae_clip(labels, predictions))
+    if 'MSE' in settings['evaluation']:
+        res.append(mse_clip(labels, predictions))
+    if 'MCA' in settings['evaluation']:
+        res.append(mca_clip(predictions, correct))
+    if 'CD' in settings['evaluation']:
+        res.append(cd_clip(predictions, correct))
+    return res
 
 
 def save_results(results, foldername='results', filename='temp'):
