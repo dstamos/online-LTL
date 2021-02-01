@@ -15,7 +15,7 @@ def train_test_itl(data, settings):
         x = data['test_tasks_tr_features'][task_idx]
         y = data['test_tasks_tr_labels'][task_idx]
 
-        cv_splits = 5
+        cv_splits = 3
         if len(y) < cv_splits:
             # In the case we don't enough enough data for 5-fold cross-validation for training (cold start), just use random data.
             x = np.random.randn(*np.concatenate([data['test_tasks_test_features'][task_idx] for task_idx in range(len(data['test_tasks_test_features']))]).shape)

@@ -19,7 +19,7 @@ def train_test_naive(data, settings):
             prediction_value = np.mean(y_tr)
         else:
             # In the case we have no data for training (cold start), just use random data.
-            prediction_value = np.random.uniform(0.1, 1.0, 1)
+            prediction_value = np.mean(np.random.uniform(0.1, 1.0, len(y_test)))
 
         # Testing
         test_predictions = prediction_value * np.ones(len(y_test))

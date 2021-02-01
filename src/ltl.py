@@ -114,7 +114,7 @@ class BiasLTL:
             # In this case for each task, split the given data and do cross validation. The retrain on all and return the corresponding weight vectors.
             best_regul_params = [None] * len(all_features)
             for task_idx in range(len(all_features)):
-                kf = KFold(n_splits=5)
+                kf = KFold(n_splits=3)
                 kf.get_n_splits(all_features[task_idx])
 
                 best_performance = np.Inf
