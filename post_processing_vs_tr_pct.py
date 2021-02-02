@@ -2,20 +2,25 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import pickle
+import os
 import matplotlib.ticker as mtick
 
 font = {'size': 48}
 matplotlib.rc('font', **font)
 
-seed_range = range(30)
+seed_range = range(10)
 test_subject_range = range(10)
+merge_test = False
+evaluation_idx = 3
+
+evaluation_names = ['MAE', 'MSE', 'MCA', 'CD']
 
 all_errors_itl = []
 all_errors_naive = []
 for test_subject in test_subject_range:
-    foldername = 'results-second_dataset/' + 'test_subject_' + str(test_subject)
+    foldername = 'results-second_dataset_all_metrics/' + 'test_subject_' + str(test_subject)
     tr_val_pct_range = np.linspace(0.00, 0.8, 30)
-    test_tasks_tr_points_pct = 0.5 * tr_val_pct_range
+    test_tasks_tr_points_pct = tr_val_pct_range
 
     all_seeds_naive = np.full([len(seed_range), len(test_tasks_tr_points_pct)], np.nan)
     all_seeds_single_task = np.full([len(seed_range), len(test_tasks_tr_points_pct)], np.nan)
@@ -23,13 +28,14 @@ for test_subject in test_subject_range:
     all_seeds_itl = np.full([len(seed_range), len(test_tasks_tr_points_pct)], np.nan)
     for tr_pct_idx, tr_pct in enumerate(test_tasks_tr_points_pct):
         for seed_idx, seed in enumerate(seed_range):
-            filename = './' + foldername + '/' + 'seed_' + str(seed) + '-tr_pct_' + str(tr_pct) + '.pckl'
+            filename = './' + foldername + '/' + 'seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(tr_pct)+'-merge_test_'+str(merge_test) + '.pckl'
+            # filename = './' + foldername + '/' + 'seed_' + str(seed) + '-tr_pct_' + str(tr_pct) + '.pckl'
             try:
                 results = pickle.load(open(filename, "rb"))
-                test_performance_naive = results['test_performance_naive']
-                test_performance_naive_transfer = results['test_performance_naive_transfer']
-                test_performance_single_task = results['test_performance_single_task']
-                test_performance_itl = results['test_performance_itl']
+                test_performance_naive = results['test_performance_naive'][evaluation_idx]
+                # test_performance_naive_transfer = results['test_performance_naive_transfer'][0]
+                test_performance_single_task = results['test_performance_single_task'][evaluation_idx]
+                test_performance_itl = results['test_performance_itl'][evaluation_idx]
                 test_performance_meta = results['test_performance_meta']
                 settings = results['settings']
 
@@ -37,7 +43,7 @@ for test_subject in test_subject_range:
                 print('broken', test_subject, tr_pct_idx, seed)
                 continue
 
-            all_seeds_meta[seed_idx, tr_pct_idx] = test_performance_meta[-1]
+            all_seeds_meta[seed_idx, tr_pct_idx] = test_performance_meta[-1][evaluation_idx]
             all_seeds_itl[seed_idx, tr_pct_idx] = test_performance_itl
             all_seeds_single_task[seed_idx, tr_pct_idx] = test_performance_single_task
             all_seeds_naive[seed_idx, tr_pct_idx] = test_performance_naive
@@ -60,7 +66,7 @@ for test_subject in test_subject_range:
 
     dpi = 100
     fig, ax = plt.subplots(figsize=(1920 / dpi, 1080 / dpi), facecolor='white', dpi=dpi, nrows=1, ncols=1)
-    plt.plot(x_range, average_meta, 'tab:blue', marker='o')
+    plt.plot(x_range, average_meta, 'tab:blue', linewidth=2, linestyle='-', marker='o')
     ax.fill_between(x_range, average_meta - std_meta, average_meta + std_meta, alpha=0.1, edgecolor='tab:blue', facecolor='tab:blue', antialiased=True, label='LTL')
 
     plt.plot(x_range, average_itl, 'tab:red', marker='o')
@@ -76,10 +82,13 @@ for test_subject in test_subject_range:
 
     fig.tight_layout()
     plt.xlabel('training %')
-    plt.ylabel('Mean Median Absolute Error')
+    plt.ylabel('performance')
     plt.legend()
-    plt.savefig('error_vs_tr_pct_second_dataset_test_subject_' + str(test_subject) + '.png', pad_inches=0)
-plt.pause(0.1)
+
+    figure_foldername = 'plots_second_feature_set-merge_test_' + str(merge_test)
+    os.makedirs(figure_foldername, exist_ok=True)
+    plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_test_subject_' + str(test_subject) + '-merge_test_' + str(merge_test) + '.png', pad_inches=0)
+# plt.pause(0.1)
 
 # plt.show()
 k = 1
