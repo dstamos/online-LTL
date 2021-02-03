@@ -95,7 +95,14 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     for idx in test_tasks_indexes:
         tasks_indexes.remove(idx)
     # Validation tasks are picked randomly (not from the same person)
-    training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
+    if settings['merge_test']:
+        n_test_subj = len(tasks_indexes) // n_experiments_per_subject
+        validation_tasks_indexes = np.random.randint(n_test_subj) * n_experiments_per_subject + np.arange(0, 3)
+        for idx in validation_tasks_indexes:
+            tasks_indexes.remove(idx)
+        training_tasks_indexes = tasks_indexes
+    else:
+        training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
 
     tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
     val_tasks_tr_points_pct = settings['val_tasks_tr_points_pct']
@@ -106,17 +113,21 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     # Training tasks (only training data)
     tr_tasks_tr_features = []
     tr_tasks_tr_labels = []
+    tr_tasks_tr_corr = []
     for counter, task_index in enumerate(training_tasks_indexes):
         x = all_features[task_index]
         y = all_labels[task_index]
+        corr = all_corr[task_index]
         n_all_points = len(y)
         shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(tr_tasks_tr_points_pct * n_all_points)
         training_features = x[shuffled_points_indexes[:n_tr_points], :]
         training_labels = y[shuffled_points_indexes[:n_tr_points]]
+        training_corr = corr[shuffled_points_indexes[:n_tr_points]]
 
         tr_tasks_tr_features.append(training_features)
         tr_tasks_tr_labels.append(training_labels)
+        tr_tasks_tr_corr.append(training_corr)
 
         if verbose is True:
             print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d}')
@@ -124,31 +135,65 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     # Validation tasks (training and test data)
     val_tasks_tr_features = []
     val_tasks_tr_labels = []
+    val_tasks_tr_corr = []
     val_tasks_test_features = []
     val_tasks_test_labels = []
-    for counter, task_index in enumerate(validation_tasks_indexes):
-        x = all_features[task_index]
-        y = all_labels[task_index]
+    val_tasks_test_corr = []
+    if settings['merge_test']:
+        x = np.zeros((0, all_features[0].shape[1]))
+        y = np.zeros(0)
+        corr = np.zeros(0, bool)
+        for task_index in validation_tasks_indexes:
+            x = np.concatenate((x, all_features[task_index]), 0)
+            y = np.concatenate((y, all_labels[task_index]), 0)
+            corr = np.concatenate((corr, all_corr[task_index]), 0)
+        validation_tasks_indexes = [0]  # There is only one training task
         n_all_points = len(y)
-        shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
 
-        training_features = x[shuffled_points_indexes[:n_tr_points], :]
-        training_labels = y[shuffled_points_indexes[:n_tr_points]]
-        test_features = x[shuffled_points_indexes[n_tr_points:], :]
-        test_labels = y[shuffled_points_indexes[n_tr_points:]]
+        training_features = x[:n_tr_points, :]
+        training_labels = y[:n_tr_points]
+        training_corr = corr[:n_tr_points]
+        test_features = x[n_tr_points:, :]
+        test_labels = y[n_tr_points:]
+        test_corr = corr[n_tr_points:]
 
         val_tasks_tr_features.append(training_features)
         val_tasks_tr_labels.append(training_labels)
+        val_tasks_tr_corr.append(training_corr)
         val_tasks_test_features.append(test_features)
         val_tasks_test_labels.append(test_labels)
+        val_tasks_test_corr.append(test_corr)
+    else:
+        for counter, task_index in enumerate(validation_tasks_indexes):
+            x = all_features[task_index]
+            y = all_labels[task_index]
+            corr = all_corr[task_index]
+            n_all_points = len(y)
+            shuffled_points_indexes = np.random.permutation(range(n_all_points))
+            n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
 
-        if verbose is True:
-            print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
+            training_features = x[shuffled_points_indexes[:n_tr_points], :]
+            training_labels = y[shuffled_points_indexes[:n_tr_points]]
+            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
+            test_features = x[shuffled_points_indexes[n_tr_points:], :]
+            test_labels = y[shuffled_points_indexes[n_tr_points:]]
+            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
+
+            val_tasks_tr_features.append(training_features)
+            val_tasks_tr_labels.append(training_labels)
+            val_tasks_tr_corr.append(training_corr)
+            val_tasks_test_features.append(test_features)
+            val_tasks_test_labels.append(test_labels)
+            val_tasks_test_corr.append(test_corr)
+
+            if verbose is True:
+                print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
 
     # Test tasks (training and test data)
     test_tasks_tr_features = []
     test_tasks_tr_labels = []
+    test_tasks_tr_corr = []
     test_tasks_test_features = []
     test_tasks_test_labels = []
     test_tasks_test_corr = []
@@ -160,19 +205,20 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             x = np.concatenate((x, all_features[task_index]), 0)
             y = np.concatenate((y, all_labels[task_index]), 0)
             corr = np.concatenate((corr, all_corr[task_index]), 0)
-        test_tasks_indexes = [0] # There is only one training task
+        test_tasks_indexes = [0]# There is only one training task
         n_all_points = len(y)
         n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
 
         training_features = x[:n_tr_points, :]
         training_labels = y[:n_tr_points]
+        training_corr = corr[:n_tr_points]
         test_features = x[n_tr_points:, :]
         test_labels = y[n_tr_points:]
-        if all_corr:
-            test_corr = corr[n_tr_points:]
+        test_corr = corr[n_tr_points:]
 
         test_tasks_tr_features.append(training_features)
         test_tasks_tr_labels.append(training_labels)
+        test_tasks_tr_corr.append(training_corr)
         test_tasks_test_features.append(test_features)
         test_tasks_test_labels.append(test_labels)
         if all_corr:
@@ -188,17 +234,17 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
 
             training_features = x[:n_tr_points, :]
             training_labels = y[:n_tr_points]
+            training_corr = corr[:n_tr_points]
             test_features = x[n_tr_points:, :]
             test_labels = y[n_tr_points:]
-            if all_corr:
-                test_corr = corr[n_tr_points:]
+            test_corr = corr[n_tr_points:]
 
             test_tasks_tr_features.append(training_features)
             test_tasks_tr_labels.append(training_labels)
+            test_tasks_tr_corr.append(training_corr)
             test_tasks_test_features.append(test_features)
             test_tasks_test_labels.append(test_labels)
-            if all_corr:
-                test_tasks_test_corr.append(test_corr)
+            test_tasks_test_corr.append(test_corr)
 
             if verbose is True:
                 print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
@@ -208,21 +254,25 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             # Training tasks
             'tr_tasks_tr_features': tr_tasks_tr_features,
             'tr_tasks_tr_labels': tr_tasks_tr_labels,
+            'tr_tasks_tr_corr': tr_tasks_tr_corr,
             # Validation tasks
             'val_tasks_tr_features': val_tasks_tr_features,
             'val_tasks_tr_labels': val_tasks_tr_labels,
+            'val_tasks_tr_corr': val_tasks_tr_corr,
             'val_tasks_test_features': val_tasks_test_features,
             'val_tasks_test_labels': val_tasks_test_labels,
+            'val_tasks_test_corr': val_tasks_test_corr,
             # Test tasks
             'test_tasks_tr_features': test_tasks_tr_features,
             'test_tasks_tr_labels': test_tasks_tr_labels,
+            'test_tasks_tr_corr': test_tasks_tr_corr,
             'test_tasks_test_features': test_tasks_test_features,
             'test_tasks_test_labels': test_tasks_test_labels,
             'test_tasks_test_corr': test_tasks_test_corr}
     return data
 
 
-def concatenate_data(all_features, all_labels):
+def concatenate_data(all_features, all_labels, all_corr):
     point_indexes_per_task = []
     for counter in range(len(all_features)):
         point_indexes_per_task.append(counter + np.zeros(all_features[counter].shape[0]))
@@ -230,13 +280,15 @@ def concatenate_data(all_features, all_labels):
 
     all_features = np.concatenate(all_features)
     all_labels = np.concatenate(all_labels)
-    return all_features, all_labels, point_indexes_per_task
+    all_corr = np.concatenate(all_corr)
+    return all_features, all_labels, all_corr, point_indexes_per_task
 
 
-def split_tasks(all_features, indexes, all_labels=None):
+def split_tasks(all_features, indexes, all_labels=None, all_corr=None):
     # Split the blob/array of features into a list of tasks based on point_indexes_per_task
     all_features = [all_features[indexes == task_idx] for task_idx in np.unique(indexes)]
     if all_labels is None:
         return all_features
     all_labels = [all_labels[indexes == task_idx] for task_idx in np.unique(indexes)]
-    return all_features, all_labels
+    all_corr = [all_corr[indexes == task_idx] for task_idx in np.unique(indexes)]
+    return all_features, all_labels, all_corr

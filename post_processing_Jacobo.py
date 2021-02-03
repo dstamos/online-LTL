@@ -31,7 +31,7 @@ font = {'size': 20}
 matplotlib.rc('font', **font)
 
 source = 'Dimitri'
-dataset = 2
+dataset = 1
 if source == 'Dimitri':
     if dataset==1:
         foldername = 'results/results-first_dataset_all_metrics'

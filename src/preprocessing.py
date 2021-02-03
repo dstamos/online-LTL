@@ -38,9 +38,9 @@ class PreProcess:
         self.inside_ball_scaling = inside_ball_scaling
         self.add_bias = add_bias
 
-    def transform(self, all_features, all_labels, fit=False, multiple_tasks=True):
+    def transform(self, all_features, all_labels, all_corr, fit=False, multiple_tasks=True):
         if multiple_tasks is True:
-            all_features, all_labels, point_indexes_per_task = concatenate_data(all_features, all_labels)
+            all_features, all_labels, all_corr, point_indexes_per_task = concatenate_data(all_features, all_labels, all_corr)
         else:
             # In the case you want to preprocess just a single dataset, pass multiple_tasks=False
             point_indexes_per_task = None
@@ -71,5 +71,5 @@ class PreProcess:
             all_features = np.concatenate((np.ones((len(all_features), 1)), all_features), 1)
 
         if multiple_tasks is True:
-            all_features, all_labels = split_tasks(all_features, point_indexes_per_task, all_labels)
-        return all_features, all_labels
+            all_features, all_labels, all_corr = split_tasks(all_features, point_indexes_per_task, all_labels, all_corr)
+        return all_features, all_labels, all_corr

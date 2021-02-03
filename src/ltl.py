@@ -1,7 +1,7 @@
 from scipy.linalg import lstsq
 import numpy as np
 from numpy.linalg.linalg import norm
-from src.utilities import multiple_tasks_mae_clip, multiple_tasks_evaluation
+from src.utilities import multiple_tasks_evaluation
 from time import time
 from src.preprocessing import PreProcess
 from sklearn.model_selection import KFold
@@ -11,6 +11,7 @@ def train_test_meta(data, settings, verbose=True):
     # Create the test tasks here. It's done early to know if we have enough training points on the test tasks for a non-"cold start" problem.
     x_test_tasks = data['test_tasks_tr_features']
     y_test_tasks = data['test_tasks_tr_labels']
+    corr_test_tasks = data['test_tasks_tr_corr']
 
     # Preprocess the data
     fine_tuning_test = settings['fine_tune'] is True and np.all([len(y_test_tasks[task_idx]) > 5 for task_idx in range(len(y_test_tasks))])
@@ -19,7 +20,7 @@ def train_test_meta(data, settings, verbose=True):
     else:
         # In the case we don't have training data on the test tasks or we just don't want to fine-tune.
         preprocessing = PreProcess(threshold_scaling=False, standard_scaling=False, inside_ball_scaling=True, add_bias=True)
-    tr_tasks_tr_features, tr_tasks_tr_labels = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], fit=True, multiple_tasks=True)
+    tr_tasks_tr_features, tr_tasks_tr_labels, _ = preprocessing.transform(data['tr_tasks_tr_features'], data['tr_tasks_tr_labels'], data['tr_tasks_tr_corr'], fit=True, multiple_tasks=True)
 
     # Training
     tt = time()
@@ -35,16 +36,18 @@ def train_test_meta(data, settings, verbose=True):
         # Check performance on the validation tasks.
         x_val_tasks = data['val_tasks_tr_features']
         y_val_tasks = data['val_tasks_tr_labels']
+        corr_val_tasks = data['val_tasks_tr_corr']
 
-        _, _ = preprocessing.transform(x_val_tasks, y_val_tasks, fit=True, multiple_tasks=True)
-        val_tasks_test_features, val_tasks_test_labels = preprocessing.transform(data['val_tasks_test_features'], data['val_tasks_test_labels'], fit=False, multiple_tasks=True)
+        _, _, _ = preprocessing.transform(x_val_tasks, y_val_tasks, corr_val_tasks, fit=True, multiple_tasks=True)
+        val_tasks_test_features, val_tasks_test_labels, val_tasks_test_corr = preprocessing.transform(data['val_tasks_test_features'], data['val_tasks_test_labels'], data['val_tasks_test_corr'], fit=False, multiple_tasks=True)
         if fine_tuning_test:
             # If we don't have enough data on the test tasks to fine-tune, the training process should not fine-tune on the validation tasks either.
-            all_weight_vectors = model_ltl.fine_tune(x_val_tasks, y_val_tasks, settings['regul_param_range'], preprocessing)
+            all_weight_vectors = model_ltl.fine_tune(x_val_tasks, y_val_tasks, corr_val_tasks, settings['regul_param_range'], preprocessing, settings['val_method'])
             val_task_predictions = model_ltl.predict(val_tasks_test_features, all_weight_vectors)
         else:
             val_task_predictions = model_ltl.predict(val_tasks_test_features)
-        val_performance = multiple_tasks_mae_clip(val_tasks_test_labels, val_task_predictions, error_progression=False)
+        # val_performance = multiple_tasks_mae_clip(val_tasks_test_labels, val_task_predictions, error_progression=False)
+        val_performance = multiple_tasks_evaluation(val_tasks_test_labels, val_task_predictions, val_tasks_test_corr, settings['val_method'])[0][-1]
         if val_performance < best_performance:
             best_param = regul_param
             best_performance = val_performance
@@ -54,15 +57,16 @@ def train_test_meta(data, settings, verbose=True):
 
     # Test
     if fine_tuning_test:
-        _, _ = preprocessing.transform(x_test_tasks, y_test_tasks, fit=True, multiple_tasks=True)
+        _, _, _ = preprocessing.transform(x_test_tasks, y_test_tasks, corr_test_tasks, fit=True, multiple_tasks=True)
 
-    test_tasks_test_features, test_tasks_test_labels = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], fit=False, multiple_tasks=True)
+    test_tasks_test_features, test_tasks_test_labels, test_tasks_test_corr = preprocessing.transform(data['test_tasks_test_features'], data['test_tasks_test_labels'], data['test_tasks_test_corr'], fit=False, multiple_tasks=True)
+
     if fine_tuning_test:
-        all_weight_vectors = best_model_ltl.fine_tune(x_test_tasks, y_test_tasks, settings['regul_param_range'], preprocessing)
+        all_weight_vectors = best_model_ltl.fine_tune(x_test_tasks, y_test_tasks, corr_test_tasks, settings['regul_param_range'], preprocessing, settings['val_method'])
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
     else:
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
-    test_performance = multiple_tasks_evaluation(test_tasks_test_labels, test_task_predictions, data['test_tasks_test_corr'], settings)
+    test_performance = multiple_tasks_evaluation(test_tasks_test_labels, test_task_predictions, test_tasks_test_corr, settings['evaluation'])
     print(f'{"LTL":12s} | test performance: {test_performance[-1][0]:12.5f} | {time() - tt:5.2f}sec')
     return best_model_ltl, test_performance
 
@@ -97,7 +101,7 @@ class BiasLTL:
         self.all_metaparameters_ = all_metaparameters
         self.metaparameter_ = mean_vector
 
-    def fine_tune(self, all_features, all_labels, regul_param, preprocessing):
+    def fine_tune(self, all_features, all_labels, all_corr, regul_param, preprocessing, eval_method):
         """
         This takes all metaparameters that have been fit already (one for each training task) and recovers fine-tunes T weight vectors.
         Where T is the length of all_features.
@@ -118,26 +122,39 @@ class BiasLTL:
                 kf.get_n_splits(all_features[task_idx])
 
                 best_performance = np.Inf
+                if eval_method[0] == 'MCA' or eval_method[0] == 'CD':
+                    best_performance *= -1
                 for curr_regul_param in regul_param:
                     curr_val_performances = []
                     for train_index, test_index in kf.split(all_features[task_idx]):
                         x_tr, x_val = all_features[task_idx][train_index], all_features[task_idx][test_index]
                         y_tr, y_val = all_labels[task_idx][train_index], all_labels[task_idx][test_index]
+                        corr_tr, corr_val = all_corr[task_idx][train_index], all_corr[task_idx][test_index]
 
-                        x_tr, y_tr = preprocessing.transform(x_tr, y_tr, fit=True, multiple_tasks=False)
-                        x_val, y_val = preprocessing.transform(x_val, y_val, fit=False, multiple_tasks=False)
+                        x_tr, y_tr, _ = preprocessing.transform(x_tr, y_tr, corr_tr, fit=True, multiple_tasks=False)
+                        x_val, y_val, corr_val = preprocessing.transform(x_val, y_val, corr_val, fit=False, multiple_tasks=False)
 
                         weight_vector = self.solve_wrt_w(self.metaparameter_, x_tr, y_tr, curr_regul_param)
 
                         val_predictions = x_val @ weight_vector
-                        val_performance = multiple_tasks_mae_clip([y_val], [[val_predictions]])
-                        curr_val_performances.append(val_performance)
-                    average_val_performance = np.min(curr_val_performances)
-                    if average_val_performance < best_performance:
-                        best_performance = average_val_performance
-                        best_regul_params[task_idx] = curr_regul_param
 
-        all_features, all_labels = preprocessing.transform(all_features, all_labels, fit=True, multiple_tasks=True)
+                        val_performance = multiple_tasks_evaluation([y_val], [[val_predictions]],
+                                                                    [corr_val],
+                                                                    eval_method)[-1]
+                        curr_val_performances.append(val_performance)
+                    if eval_method[0] == 'MSE' or eval_method[0] == 'MAE':
+                        average_val_performance = np.nanmin(curr_val_performances)
+                        if average_val_performance < best_performance:
+                            best_performance = average_val_performance
+                            best_regul_params[task_idx] = curr_regul_param
+                    else:
+                        average_val_performance = np.nanmax(curr_val_performances)
+                        if average_val_performance > best_performance:
+                            best_performance = average_val_performance
+                            best_regul_params[task_idx] = curr_regul_param
+
+
+        all_features, all_labels, all_corr = preprocessing.transform(all_features, all_labels, all_corr, fit=True, multiple_tasks=True)
 
         all_weight_vectors = []
         for metaparameter in self.all_metaparameters_:

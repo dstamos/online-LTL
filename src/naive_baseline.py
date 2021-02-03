@@ -24,7 +24,7 @@ def train_test_naive(data, settings):
 
         # Testing
         test_predictions = prediction_value * np.ones(len(y_test))
-        all_performances.append(evaluation_methods(y_test, test_predictions, corr, settings))
+        all_performances.append(evaluation_methods(y_test, test_predictions, corr, settings['evaluation']))
     test_performance = np.mean(all_performances, 0)
     print(f'{"Naive":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
 
