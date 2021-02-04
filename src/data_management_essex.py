@@ -176,7 +176,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
                 n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
                 test_corr = corr[shuffled_points_indexes[n_tr_points:]]
                 training_corr = corr[shuffled_points_indexes[:n_tr_points]]
-                if np.sum(test_corr) != len(test_corr) and np.sum(training_corr) != len(training_corr):
+                if (np.sum(test_corr) != len(test_corr) and np.sum(training_corr) != len(training_corr)) or n_tr_points==0:
                     flag = False
 
             training_features = x[shuffled_points_indexes[:n_tr_points], :]
@@ -241,7 +241,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
                 n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
                 test_corr = corr[shuffled_points_indexes[n_tr_points:]]
                 training_corr = corr[shuffled_points_indexes[:n_tr_points]]
-                if np.sum(test_corr) != len(test_corr) and np.sum(training_corr) != len(training_corr):
+                if (np.sum(test_corr) != len(test_corr) and np.sum(training_corr) != len(training_corr)) or n_tr_points == 0:
                     flag = False
 
             training_features = x[shuffled_points_indexes[:n_tr_points], :]
