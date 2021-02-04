@@ -1,6 +1,5 @@
 import numpy as np
-from numpy.linalg import pinv
-from numpy import identity as eye
+from scipy.linalg import lstsq
 from src.preprocessing import PreProcess
 from time import time
 from src.utilities import evaluation_methods
@@ -81,7 +80,7 @@ class ITL:
     def fit(self, features, labels):
         dims = features.shape[1]
 
-        weight_vector = pinv(features.T @ features + self.regularization_parameter * eye(dims)) @ features.T @ labels
+        weight_vector = lstsq(features.T @ features + self.regularization_parameter * np.eye(dims), features.T @ labels)[0]
         self.weight_vector = weight_vector
 
     def predict(self, features):
