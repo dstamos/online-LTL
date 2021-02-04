@@ -96,8 +96,9 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         tasks_indexes.remove(idx)
     # Validation tasks are picked randomly (not from the same person)
     if settings['merge_test']:
-        n_test_subj = len(tasks_indexes) // n_experiments_per_subject
-        validation_tasks_indexes = np.random.randint(n_test_subj) * n_experiments_per_subject + np.arange(0, 3)
+        list_of_subjects = list(range(n_all_subjects))
+        list_without_test_subjects = [s for s in list_of_subjects if s not in test_subjects]
+        validation_tasks_indexes = np.random.choice(list_without_test_subjects) * n_experiments_per_subject + np.arange(0, 3)
         for idx in validation_tasks_indexes:
             tasks_indexes.remove(idx)
         training_tasks_indexes = tasks_indexes
