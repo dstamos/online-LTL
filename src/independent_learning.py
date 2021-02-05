@@ -13,7 +13,7 @@ def train_test_itl(data, settings):
     for task_idx in range(len(data['test_tasks_indexes'])):
         x = data['test_tasks_tr_features'][task_idx]
         y = data['test_tasks_tr_labels'][task_idx]
-        corr = data['test_tasks_test_corr'][task_idx]
+        corr = data['test_tasks_tr_corr'][task_idx]
 
         cv_splits = 3
         if len(y) < cv_splits:

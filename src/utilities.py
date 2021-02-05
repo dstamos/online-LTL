@@ -74,7 +74,7 @@ def mca_clip(predictions, corr):
 def cd_clip(predictions, corr):
     pred = np.clip(predictions, 0, 1)
     if len(corr) == np.sum(corr):
-        return np.nan
+        return -0.99
     return np.mean(pred[corr]) - np.mean(pred[~corr])
 
 
