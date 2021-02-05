@@ -171,19 +171,15 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             y = all_labels[task_index]
             corr = all_corr[task_index]
             n_all_points = len(y)
-            flag = True
-            while flag:
-                shuffled_points_indexes = np.random.permutation(range(n_all_points))
-                n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
-                test_corr = corr[shuffled_points_indexes[n_tr_points:]]
-                training_corr = corr[shuffled_points_indexes[:n_tr_points]]
-                if (np.sum(test_corr) != len(test_corr) and np.sum(training_corr) != len(training_corr)) or n_tr_points==0:
-                    flag = False
+            shuffled_points_indexes = np.random.permutation(range(n_all_points))
+            n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
 
             training_features = x[shuffled_points_indexes[:n_tr_points], :]
             training_labels = y[shuffled_points_indexes[:n_tr_points]]
+            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
             test_features = x[shuffled_points_indexes[n_tr_points:], :]
             test_labels = y[shuffled_points_indexes[n_tr_points:]]
+            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
 
             val_tasks_tr_features.append(training_features)
             val_tasks_tr_labels.append(training_labels)
@@ -235,20 +231,15 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             y = all_labels[task_index]
             corr = all_corr[task_index]
             n_all_points = len(y)
+            shuffled_points_indexes = np.random.permutation(range(n_all_points))
             n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
-            flag = True
-            while flag:
-                shuffled_points_indexes = np.random.permutation(range(n_all_points))
-                n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
-                test_corr = corr[shuffled_points_indexes[n_tr_points:]]
-                training_corr = corr[shuffled_points_indexes[:n_tr_points]]
-                if (np.sum(test_corr) != len(test_corr) and np.sum(training_corr) != len(training_corr)) or n_tr_points == 0:
-                    flag = False
 
             training_features = x[shuffled_points_indexes[:n_tr_points], :]
             training_labels = y[shuffled_points_indexes[:n_tr_points]]
+            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
             test_features = x[shuffled_points_indexes[n_tr_points:], :]
             test_labels = y[shuffled_points_indexes[n_tr_points:]]
+            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
 
             test_tasks_tr_features.append(training_features)
             test_tasks_tr_labels.append(training_labels)
