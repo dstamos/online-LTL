@@ -1,8 +1,13 @@
 import matplotlib.pyplot as plt
 import matplotlib
 from mpl_toolkits.mplot3d import axes3d
+import imageio
+from glob import glob
 from scipy import stats as sp
 import numpy as np
+import mne
+
+
 font = {'size': 20}
 matplotlib.rc('font', **font)
 dpi = 100
@@ -74,3 +79,32 @@ def plotImportance2D(w, folder='../../analysis/', name='all_subj_Importance_2D.p
     plt.xlabel('# Training Tasks')
     plt.savefig(folder + name, pad_inches=0)
     plt.close(f)
+
+def plot_topos(w, folder='../../analysis/', name='all_subj_Scalp.png',supTitle=[]):
+    vmin = np.min(w)
+    vmax = np.max(w)
+    f = plt.figure(figsize=figsize, dpi=dpi)
+    channels = mne.channels.make_standard_montage('biosemi64').get_positions()['ch_pos']
+    pos = np.array([channels[c][:2] for c in channels])
+    titles1 = ['Not Merged', 'Merged']
+    titles2 = ['Response Features', 'Stimulus Features']
+    f, ax = plt.subplots(2, 2, figsize=figsize, dpi=dpi, sharex=True,sharey=True)
+    for i in range(2):
+        for j in range(2):
+            mne.viz.plot_topomap(w[i, j*64:(j+1)*64], pos, vmin, vmax, 'coolwarm', axes=ax[i, j], show=False)
+            if not supTitle:
+                ax[i, j].set_title(titles1[i]+' - '+titles2[j])
+    if supTitle:
+        plt.suptitle(supTitle)
+    plt.savefig(folder + name, pad_inches=0)
+    plt.close(f)
+
+def plot_topo_gif(w, folder='../../analysis/TopoGif/', name='all_subj_Scalp'):
+    for i in range(w.shape[1]):
+        ind = str(i).zfill(2)
+        plot_topos(w[:, i, :], folder, name+ind+'.png','# Training sets: '+ind)
+    files = sorted(glob(folder+'*.png'))
+    images = []
+    for f in files:
+        images.append(imageio.imread(f))
+    imageio.mimsave(folder+name+'.gif', images)
