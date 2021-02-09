@@ -40,14 +40,18 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True):
     return feat, label, experiment_names, corr
 
 
-def load_data_essex_two():
+def load_data_essex_two(useRT=True):
 
-    l = np.load('./data/alllabels_chris.npy', allow_pickle=True)
-    f = np.load('./data/allfeatures_chris.npy', allow_pickle=True)
-    c = np.load('./data/correctness.npy', allow_pickle=True)
+    l = np.load('./data/confidence_Chris.npy', allow_pickle=True)
+    f = np.load('./data/features_Chris_small.npy', allow_pickle=True)
+    c = np.load('./data/correctness_Chris.npy', allow_pickle=True)
     features = [i for i in f]
+
     labels = [i for i in l]
     corr = [i.astype(bool) for i in c]
+
+    if ~useRT:
+        features = [f[:, :-1] for f in features]
 
     # The assumption is that each subject had 3 days of experiments.
     # The point of this is to make it easy to check for mistakes down the line
