@@ -50,7 +50,7 @@ def load_data_essex_two(useRT=True):
     labels = [i for i in l]
     corr = [i.astype(bool) for i in c]
 
-    if ~useRT:
+    if not(useRT):
         features = [f[:, :-1] for f in features]
 
     # The assumption is that each subject had 3 days of experiments.
