@@ -13,10 +13,12 @@ test_subject_range = range(10)
 merge_test = False
 evaluation_idx = 3
 
-evaluation_names = ['MAE', 'MSE', 'MCA', 'CD']
+evaluation_names = ['MAE', 'MSE', 'MCA', 'CD', 'COR']
 
 all_errors_itl = []
 all_errors_naive = []
+all_errors_single = []
+all_errors_meta = []
 for test_subject in test_subject_range:
     foldername = 'results-second_dataset_all_metrics/' + 'test_subject_' + str(test_subject)
     tr_val_pct_range = np.linspace(0.00, 0.8, 30)
@@ -62,6 +64,8 @@ for test_subject in test_subject_range:
 
     all_errors_itl.append(average_itl)
     all_errors_naive.append(average_naive)
+    all_errors_single.append(average_single_task)
+    all_errors_meta.append(average_meta)
     x_range = 100 * tr_val_pct_range
 
     dpi = 100
@@ -88,6 +92,32 @@ for test_subject in test_subject_range:
     figure_foldername = 'plots_second_feature_set-merge_test_' + str(merge_test)
     os.makedirs(figure_foldername, exist_ok=True)
     plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_test_subject_' + str(test_subject) + '-merge_test_' + str(merge_test) + '.png', pad_inches=0)
+dpi = 100
+fig, ax = plt.subplots(figsize=(1920 / dpi, 1080 / dpi), facecolor='white', dpi=dpi, nrows=1, ncols=1)
+plt.plot(x_range, np.nanmean(all_errors_meta, 0), 'tab:blue', linewidth=2, linestyle='-', marker='o')
+ax.fill_between(x_range, np.nanmean(all_errors_meta, 0) - np.nanstd(all_errors_meta, 0), np.nanmean(all_errors_meta, 0) + np.nanstd(all_errors_meta, 0), alpha=0.1, edgecolor='tab:blue', facecolor='tab:blue', antialiased=True, label='LTL')
+
+plt.plot(x_range, np.nanmean(all_errors_itl, 0), 'tab:red', marker='o')
+ax.fill_between(x_range, np.nanmean(all_errors_itl, 0) - np.nanstd(all_errors_itl, 0), np.nanmean(all_errors_itl, 0) + np.nanstd(all_errors_itl, 0), alpha=0.1, edgecolor='tab:red', facecolor='tab:red', antialiased=True, label='ITL')
+
+plt.plot(x_range, np.nanmean(all_errors_single, 0), 'tab:green', marker='o')
+ax.fill_between(x_range, np.nanmean(all_errors_single, 0) - np.nanstd(all_errors_single, 0), np.nanmean(all_errors_single, 0) + np.nanstd(all_errors_single, 0), alpha=0.1, edgecolor='tab:green', facecolor='tab:green', antialiased=True, label='Single task')
+
+plt.plot(x_range, np.nanmean(all_errors_naive, 0), 'tab:gray', marker='o')
+ax.fill_between(x_range, np.nanmean(all_errors_naive, 0) - np.nanstd(all_errors_naive, 0), np.nanmean(all_errors_naive, 0) + np.nanstd(all_errors_naive, 0), alpha=0.1, edgecolor='tab:gray', facecolor='tab:gray', antialiased=True, label='Naive')
+
+ax.xaxis.set_major_formatter(mtick.PercentFormatter())
+
+fig.tight_layout()
+plt.xlabel('training %')
+plt.ylabel('performance')
+plt.legend()
+plt.title(evaluation_names[evaluation_idx])
+
+
+figure_foldername = 'plots_second_feature_set-merge_test_' + str(merge_test)
+os.makedirs(figure_foldername, exist_ok=True)
+plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_average-merge_test_' + str(merge_test) + '.png', pad_inches=0)
 # plt.pause(0.1)
 
 # plt.show()
