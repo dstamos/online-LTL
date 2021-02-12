@@ -44,10 +44,10 @@ def main(settings, seed):
                  foldername='results-first_dataset_testingstuff/' + 'test_subject_' + str(settings['test_subject']),
                  filename='seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(settings['test_tasks_tr_points_pct']) + '-merge_test_' + str(settings['merge_test']) + '-fitness_' + settings['val_method'][0])
 
-    print(f'{"Naive":20s} {test_performance_naive[-1]:6.4f} \n'
-          f'{"Single-task":20s} {test_performance_single_task[-1]:6.4f} \n'
-          f'{"ITL":20s} {test_performance_itl[-1]:6.4f} \n'
-          f'{"Meta":20s} {test_performance_meta[-1][-1]:6.4f}')
+    print(f'{"Naive":20s} {test_performance_naive[-2]:6.4f} {test_performance_naive[-1]*100:6.4f}% \n'
+          f'{"Single-task":20s} {test_performance_single_task[-2]:6.4f} {test_performance_single_task[-1]*100:6.4f}% \n'
+          f'{"ITL":20s} {test_performance_itl[-2]:6.4f} {test_performance_itl[-1]*100:6.4f}% \n'
+          f'{"Meta":20s} {test_performance_meta[-1][-2]:6.4f} {test_performance_meta[-1][-1]*100:6.4f}%')
 
 
 if __name__ == "__main__":
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         fitness_metrics = [fitness_metrics[int(sys.argv[4])]]
     else:
         seed_range = [0]
-    regul_param_range = np.logspace(-16, 5, 64)
+    regul_param_range = np.logspace(-16, 2, 64)
 
     fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
 
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     test_tasks_test_points_pct_range = 1 - test_tasks_tr_points_pct_range
     assert np.all(test_tasks_tr_points_pct_range + test_tasks_test_points_pct_range == 1), 'Percentages need to add up to 1'
 
-    evaluation = ['MAE', 'MSE', 'MCA', 'CD']
+    evaluation = ['MAE', 'MSE', 'MCA', 'CD', 'COR']
 
     for curr_test_subject in test_subject_range:
         for merge_test in merge_test_range:
@@ -114,6 +114,7 @@ if __name__ == "__main__":
                                    'test_tasks_test_points_pct': test_tasks_test_points_pct,
                                    'evaluation': evaluation,
                                    'val_method': [fitness],
-                                   'merge_test': merge_test}
+                                   'merge_test': merge_test,
+                                   'merge_train': True}
                         main(options, curr_seed)
                         print('\n')
