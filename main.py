@@ -18,11 +18,11 @@ import sys
 def main(settings, seed):
     np.random.seed(seed)
 
-    all_features, all_labels, all_experiment_names, all_correct = load_data_essex_one()
+    all_features, all_labels, all_experiment_names, all_correct = load_data_essex_one(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
 
     test_performance_naive = train_test_naive(data, settings)
-    # test_performance_naive = [np.nan]
+    #test_performance_naive = [np.nan]
 
     test_performance_single_task = train_test_single_task(data, settings)
     # test_performance_single_task = [np.nan]
@@ -63,14 +63,14 @@ if __name__ == "__main__":
 
     # Parameters
     test_subject_range = range(0, 9)
-    # test_subject_range = [0]
+    #test_subject_range = [0]
 
-    test_tasks_tr_split_range = np.linspace(0.0, 0.8, 41)
-    # test_tasks_tr_split_range = np.array([0.2])
+    # test_tasks_tr_split_range = np.linspace(0.05, 0.5, 10)
+    test_tasks_tr_split_range = np.array([0])
 
-    merge_test_range = [False, True]
+    merge_test_range = [False]
 
-    fitness_metrics = ['CD', 'MSE']
+    fitness_metrics = ['MSE']
 
     if len(sys.argv) > 1:
         # This is the case when main.py is called from a bash script with inputs
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         fitness_metrics = [fitness_metrics[int(sys.argv[4])]]
     else:
         seed_range = [0]
-    regul_param_range = np.logspace(-16, 5, 64)
+    regul_param_range = np.logspace(-12, 1, 5)
 
     fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
 
@@ -114,6 +114,7 @@ if __name__ == "__main__":
                                    'test_tasks_test_points_pct': test_tasks_test_points_pct,
                                    'evaluation': evaluation,
                                    'val_method': [fitness],
-                                   'merge_test': merge_test}
+                                   'merge_test': merge_test,
+                                   'merge_train': True}
                         main(options, curr_seed)
                         print('\n')
