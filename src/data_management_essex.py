@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 
-def load_data_essex_one(delete0=True, useStim=True, useRT=True, exclude=[8]):
+def load_data_essex_one(delete0=True, useStim=True, useRT=True, exclude=[7]):
     extra = np.load('./data/extra.npy')
     correct = np.load('./data/corr.npy')
     if useStim:
