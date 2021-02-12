@@ -137,6 +137,11 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         if verbose is True:
             print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d}')
 
+    if settings['merge_train']:
+        tr_tasks_tr_corr = [np.concatenate(tr_tasks_tr_corr)]
+        tr_tasks_tr_labels = [np.concatenate(tr_tasks_tr_labels)]
+        tr_tasks_tr_features = [np.concatenate(tr_tasks_tr_features)]
+
     # Validation tasks (training and test data)
     val_tasks_tr_features = []
     val_tasks_tr_labels = []
