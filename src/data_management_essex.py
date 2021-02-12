@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 
-def load_data_essex_one(delete0=True, useStim=True, useRT=True):
+def load_data_essex_one(delete0=True, useStim=True, useRT=True, exclude=[8]):
     extra = np.load('./data/extra.npy')
     correct = np.load('./data/corr.npy')
     if useStim:
@@ -12,19 +12,20 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True):
     label = []
     corr = []
     for s in np.unique(extra[:, 0]):
-        for d in range(1, 4):
-            val = np.logical_and(extra[:, 0] == s, extra[:, 1] == d)
-            if delete0:
-                val = np.logical_and(val, extra[:, 3] != 0)
-            nval = np.sum(val)
-            f = resp[val, :]
-            if useStim:
-                f = np.concatenate((f, stim[val, :]), 1)
-            if useRT:
-                f = np.concatenate((f, np.expand_dims(extra[val, 2], 1)), 1)
-            feat.append(f)
-            label.append(extra[val, 3])
-            corr.append(correct[val])
+        if s not in exclude:
+            for d in range(1, 4):
+                val = np.logical_and(extra[:, 0] == s, extra[:, 1] == d)
+                if delete0:
+                    val = np.logical_and(val, extra[:, 3] != 0)
+                nval = np.sum(val)
+                f = resp[val, :]
+                if useStim:
+                    f = np.concatenate((f, stim[val, :]), 1)
+                if useRT:
+                    f = np.concatenate((f, np.expand_dims(extra[val, 2], 1)), 1)
+                feat.append(f)
+                label.append(extra[val, 3])
+                corr.append(correct[val])
 
     # The assumption is that each subject had 3 days of experiments.
     # The point of this is to make it easy to check for mistakes down the line
