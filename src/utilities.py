@@ -67,6 +67,15 @@ def mse_clip(labels, predictions):
     return np.mean((labels - np.clip(predictions, 0.1, 1)) ** 2)
 
 
+def nmse_clip(labels, predictions):
+    predictions = np.clip(predictions, 0.0, 1)
+    mse = mean_squared_error(labels, predictions)
+    if len(np.unique(labels)) == 1:
+        return mse
+    nmse = mse / mean_squared_error(labels.ravel(), np.mean(labels.ravel()) * np.ones(len(labels)))
+    return nmse
+
+
 def mca_clip(predictions, corr):
     return np.mean(1 - abs(np.clip(predictions, 0, 1) - corr))
 
@@ -78,26 +87,18 @@ def cd_clip(predictions, corr):
     return np.mean(pred[corr]) - np.mean(pred[~corr])
 
 
-def correlation_clip(labels, predictions):
-    clipcor = np.clip(predictions, 0.1, 1)
-    if len(set(clipcor)) == 1:
-        return 0
-    corr = np.corrcoef(labels, clipcor)
-    return corr[0, 1]
-
-
 def evaluation_methods(labels, predictions, correct, method):
     res = []
     if 'MAE' in method:
         res.append(mae_clip(labels, predictions))
+    if 'NMSE' in method:
+        res.append(nmse_clip(labels, predictions))
     if 'MSE' in method:
         res.append(mse_clip(labels, predictions))
     if 'MCA' in method:
         res.append(mca_clip(predictions, correct))
     if 'CD' in method:
         res.append(cd_clip(predictions, correct))
-    if 'COR' in method:
-        res.append(correlation_clip(labels, predictions))
     return res
 
 

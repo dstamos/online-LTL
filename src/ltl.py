@@ -3,6 +3,7 @@ import numpy as np
 from numpy.linalg.linalg import norm
 from src.utilities import multiple_tasks_evaluation
 from time import time
+from copy import deepcopy
 from src.preprocessing import PreProcess
 from sklearn.model_selection import KFold
 
@@ -26,7 +27,10 @@ def train_test_meta(data, settings, verbose=True):
     tt = time()
     best_model_ltl = None
     best_param = None
-    best_performance = np.Inf
+    if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
+        best_performance = np.Inf
+    else:
+        best_performance = -1
     model_ltl = BiasLTL(keep_all_metaparameters=True)
     for regul_param in settings['regul_param_range']:
         # Optimise metaparameters on the training tasks.
@@ -48,10 +52,16 @@ def train_test_meta(data, settings, verbose=True):
             val_task_predictions = model_ltl.predict(val_tasks_test_features)
         # val_performance = multiple_tasks_mae_clip(val_tasks_test_labels, val_task_predictions, error_progression=False)
         val_performance = multiple_tasks_evaluation(val_tasks_test_labels, val_task_predictions, val_tasks_test_corr, settings['val_method'])[0][-1]
-        if val_performance < best_performance:
-            best_param = regul_param
-            best_performance = val_performance
-            best_model_ltl = model_ltl
+        if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
+            if val_performance < best_performance:
+                best_param = regul_param
+                best_performance = val_performance
+                best_model_ltl = deepcopy(model_ltl)
+        else:
+            if val_performance > best_performance:
+                best_param = regul_param
+                best_performance = val_performance
+                best_model_ltl = deepcopy(model_ltl)
         if verbose is True:
             print(f'{"LTL":10s} | param: {regul_param:6e} | val performance: {val_performance:12.5f} | {time() - tt:5.2f}sec')
 
@@ -65,10 +75,11 @@ def train_test_meta(data, settings, verbose=True):
         all_weight_vectors = best_model_ltl.fine_tune(x_test_tasks, y_test_tasks, corr_test_tasks, settings['regul_param_range'], preprocessing, settings['val_method'])
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features, all_weight_vectors)
     else:
+        all_weight_vectors = None
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
     test_performance = multiple_tasks_evaluation(test_tasks_test_labels, test_task_predictions, test_tasks_test_corr, settings['evaluation'])
     print(f'{"LTL":12s} | test performance: {test_performance[-1][0]:12.5f} | {time() - tt:5.2f}sec')
-    return best_model_ltl, test_performance
+    return best_model_ltl, test_performance, all_weight_vectors
 
 
 class BiasLTL:
@@ -94,7 +105,7 @@ class BiasLTL:
 
         all_metaparameters = []
         for task_idx in range(len(all_features)):
-            mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=task_idx, inner_iter_cap=3)
+            mean_vector = self.solve_wrt_metaparameter(mean_vector, all_features[task_idx], all_labels[task_idx], curr_iteration=task_idx, inner_iter_cap=10)
             if all_metaparameters:
                 mean_vector = (task_idx * all_metaparameters[-1] + mean_vector) / (task_idx + 1)
             all_metaparameters.append(mean_vector)
@@ -142,7 +153,7 @@ class BiasLTL:
                                                                     [corr_val],
                                                                     eval_method)[-1]
                         curr_val_performances.append(val_performance)
-                    if eval_method[0] == 'MSE' or eval_method[0] == 'MAE':
+                    if eval_method[0] == 'MSE' or eval_method[0] == 'MAE' or eval_method[0] == 'NMSE':
                         average_val_performance = np.nanmin(curr_val_performances)
                         if average_val_performance < best_performance:
                             best_performance = average_val_performance

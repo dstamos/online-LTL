@@ -22,7 +22,7 @@ def main(settings, seed):
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
 
     test_performance_naive = train_test_naive(data, settings)
-    #test_performance_naive = [np.nan]
+    # test_performance_naive = [np.nan]
 
     test_performance_single_task = train_test_single_task(data, settings)
     # test_performance_single_task = [np.nan]
@@ -30,18 +30,19 @@ def main(settings, seed):
     test_performance_itl = train_test_itl(data, settings)
     # test_performance_itl = [np.nan]
 
-    best_model_meta, test_performance_meta = train_test_meta(data, settings, verbose=False)
+    best_model_meta, test_performance_meta, all_weight_vectors_meta = train_test_meta(data, settings, verbose=True)
     # best_model_meta, test_performance_meta = None, [[np.nan]]
 
     results = {'test_performance_naive': test_performance_naive,
                'test_performance_single_task': test_performance_single_task,
                'test_performance_itl': test_performance_itl,
                'test_performance_meta': test_performance_meta,
+               'all_weight_vectors_meta': all_weight_vectors_meta,
                'best_model_meta': best_model_meta,
                'settings': settings}
 
     save_results(results,
-                 foldername='results-first_dataset_testingstuff/' + 'test_subject_' + str(settings['test_subject']),
+                 foldername='results-first_dataset_nmse/' + 'test_subject_' + str(settings['test_subject']),
                  filename='seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(settings['test_tasks_tr_points_pct']) + '-merge_test_' + str(settings['merge_test']) + '-fitness_' + settings['val_method'][0])
 
     print(f'{"Naive":20s} {test_performance_naive[-2]:6.4f} {test_performance_naive[-1]*100:6.4f}% \n'
@@ -62,15 +63,15 @@ if __name__ == "__main__":
     """
 
     # Parameters
-    test_subject_range = range(0, 9)
-    #test_subject_range = [0]
+    # test_subject_range = range(0, 8)
+    test_subject_range = [5]
 
-    # test_tasks_tr_split_range = np.linspace(0.05, 0.5, 10)
-    test_tasks_tr_split_range = np.array([0])
+    # test_tasks_tr_split_range = np.arange(0.0, 0.525, 0.025)
+    test_tasks_tr_split_range = np.array([0.25])
 
     merge_test_range = [False]
 
-    fitness_metrics = ['MSE']
+    fitness_metrics = ['NMSE']
 
     if len(sys.argv) > 1:
         # This is the case when main.py is called from a bash script with inputs
@@ -78,25 +79,25 @@ if __name__ == "__main__":
         test_tasks_tr_split_range = np.array([test_tasks_tr_split_range[int(sys.argv[2])]])
         merge_test_range = [merge_test_range[int(sys.argv[3])]]
         fitness_metrics = [fitness_metrics[int(sys.argv[4])]]
+        test_subject_range = [test_subject_range[int(sys.argv[5])]]
     else:
-        seed_range = [0]
-    regul_param_range = np.logspace(-16, 2, 64)
-
+        seed_range = [9999]
+    regul_param_range = np.logspace(-12, 4, 36)
 
     fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
 
     # Dataset split for training tasks (only training points)
-    tr_tasks_tr_points_pct = 0.2
+    tr_tasks_tr_points_pct = max(test_tasks_tr_split_range[0], 0.1)
 
-    val_tasks_tr_points_pct = 0.5
-    val_tasks_test_points_pct = 0.5
+    val_tasks_tr_points_pct = max(test_tasks_tr_split_range[0], 0.1)
+    val_tasks_test_points_pct = 1 - val_tasks_tr_points_pct
     assert val_tasks_tr_points_pct + val_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
 
     test_tasks_tr_points_pct_range = test_tasks_tr_split_range
     test_tasks_test_points_pct_range = 1 - test_tasks_tr_points_pct_range
     assert np.all(test_tasks_tr_points_pct_range + test_tasks_test_points_pct_range == 1), 'Percentages need to add up to 1'
 
-    evaluation = ['MAE', 'MSE', 'MCA', 'CD', 'COR']
+    evaluation = ['MAE', 'NMSE', 'MSE', 'MCA', 'CD']
 
     for curr_test_subject in test_subject_range:
         for merge_test in merge_test_range:
@@ -116,6 +117,6 @@ if __name__ == "__main__":
                                    'evaluation': evaluation,
                                    'val_method': [fitness],
                                    'merge_test': merge_test,
-                                   'merge_train': True}
+                                   'merge_train': False}
                         main(options, curr_seed)
                         print('\n')

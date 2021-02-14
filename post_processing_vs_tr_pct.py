@@ -3,25 +3,25 @@ import matplotlib.pyplot as plt
 import matplotlib
 import pickle
 import os
+import time
 import matplotlib.ticker as mtick
 
-font = {'size': 48}
+font = {'size': 36}
 matplotlib.rc('font', **font)
 
-seed_range = range(10)
-test_subject_range = range(10)
+seed_range = range(30)
+test_subject_range = range(8)
 merge_test = False
-evaluation_idx = 3
+evaluation_idx = 1
 
-evaluation_names = ['MAE', 'MSE', 'MCA', 'CD', 'COR']
+evaluation_names = ['MAE', 'NMSE', 'MSE', 'MCA', 'CD']
 
 all_errors_itl = []
 all_errors_naive = []
-all_errors_single = []
-all_errors_meta = []
 for test_subject in test_subject_range:
-    foldername = 'results-second_dataset_all_metrics/' + 'test_subject_' + str(test_subject)
-    tr_val_pct_range = np.linspace(0.00, 0.8, 30)
+    foldername = 'results-first_dataset_nmse_30_seeds'
+    foldername_with_subfolder = foldername + '/test_subject_' + str(test_subject)
+    tr_val_pct_range = np.arange(0.0, 0.625, 0.025)
     test_tasks_tr_points_pct = tr_val_pct_range
 
     all_seeds_naive = np.full([len(seed_range), len(test_tasks_tr_points_pct)], np.nan)
@@ -30,15 +30,16 @@ for test_subject in test_subject_range:
     all_seeds_itl = np.full([len(seed_range), len(test_tasks_tr_points_pct)], np.nan)
     for tr_pct_idx, tr_pct in enumerate(test_tasks_tr_points_pct):
         for seed_idx, seed in enumerate(seed_range):
-            filename = './' + foldername + '/' + 'seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(tr_pct)+'-merge_test_'+str(merge_test) + '.pckl'
+            filename = './' + foldername_with_subfolder + '/' + 'seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(tr_pct)+'-merge_test_'+str(merge_test) +  '-fitness_' + evaluation_names[evaluation_idx] + '.pckl'
             # filename = './' + foldername + '/' + 'seed_' + str(seed) + '-tr_pct_' + str(tr_pct) + '.pckl'
             try:
                 results = pickle.load(open(filename, "rb"))
                 test_performance_naive = results['test_performance_naive'][evaluation_idx]
-                # test_performance_naive_transfer = results['test_performance_naive_transfer'][0]
                 test_performance_single_task = results['test_performance_single_task'][evaluation_idx]
                 test_performance_itl = results['test_performance_itl'][evaluation_idx]
                 test_performance_meta = results['test_performance_meta']
+                all_weight_vectors_meta = results['all_weight_vectors_meta']
+                best_model_meta = results['best_model_meta']
                 settings = results['settings']
 
             except Exception as e:
@@ -64,8 +65,6 @@ for test_subject in test_subject_range:
 
     all_errors_itl.append(average_itl)
     all_errors_naive.append(average_naive)
-    all_errors_single.append(average_single_task)
-    all_errors_meta.append(average_meta)
     x_range = 100 * tr_val_pct_range
 
     dpi = 100
@@ -84,41 +83,17 @@ for test_subject in test_subject_range:
 
     ax.xaxis.set_major_formatter(mtick.PercentFormatter())
 
-    fig.tight_layout()
+    if evaluation_idx == 1:
+        plt.ylim(top=2)
+    plt.title('subject ' + str(test_subject))
     plt.xlabel('training %')
     plt.ylabel('performance')
     plt.legend()
 
-    figure_foldername = 'plots_second_feature_set-merge_test_' + str(merge_test)
-    os.makedirs(figure_foldername, exist_ok=True)
-    plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_test_subject_' + str(test_subject) + '-merge_test_' + str(merge_test) + '.png', pad_inches=0)
-dpi = 100
-fig, ax = plt.subplots(figsize=(1920 / dpi, 1080 / dpi), facecolor='white', dpi=dpi, nrows=1, ncols=1)
-plt.plot(x_range, np.nanmean(all_errors_meta, 0), 'tab:blue', linewidth=2, linestyle='-', marker='o')
-ax.fill_between(x_range, np.nanmean(all_errors_meta, 0) - np.nanstd(all_errors_meta, 0), np.nanmean(all_errors_meta, 0) + np.nanstd(all_errors_meta, 0), alpha=0.1, edgecolor='tab:blue', facecolor='tab:blue', antialiased=True, label='LTL')
-
-plt.plot(x_range, np.nanmean(all_errors_itl, 0), 'tab:red', marker='o')
-ax.fill_between(x_range, np.nanmean(all_errors_itl, 0) - np.nanstd(all_errors_itl, 0), np.nanmean(all_errors_itl, 0) + np.nanstd(all_errors_itl, 0), alpha=0.1, edgecolor='tab:red', facecolor='tab:red', antialiased=True, label='ITL')
-
-plt.plot(x_range, np.nanmean(all_errors_single, 0), 'tab:green', marker='o')
-ax.fill_between(x_range, np.nanmean(all_errors_single, 0) - np.nanstd(all_errors_single, 0), np.nanmean(all_errors_single, 0) + np.nanstd(all_errors_single, 0), alpha=0.1, edgecolor='tab:green', facecolor='tab:green', antialiased=True, label='Single task')
-
-plt.plot(x_range, np.nanmean(all_errors_naive, 0), 'tab:gray', marker='o')
-ax.fill_between(x_range, np.nanmean(all_errors_naive, 0) - np.nanstd(all_errors_naive, 0), np.nanmean(all_errors_naive, 0) + np.nanstd(all_errors_naive, 0), alpha=0.1, edgecolor='tab:gray', facecolor='tab:gray', antialiased=True, label='Naive')
-
-ax.xaxis.set_major_formatter(mtick.PercentFormatter())
-
-fig.tight_layout()
-plt.xlabel('training %')
-plt.ylabel('performance')
-plt.legend()
-plt.title(evaluation_names[evaluation_idx])
-
-
-figure_foldername = 'plots_second_feature_set-merge_test_' + str(merge_test)
-os.makedirs(figure_foldername, exist_ok=True)
-plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_average-merge_test_' + str(merge_test) + '.png', pad_inches=0)
-# plt.pause(0.1)
+    # figure_foldername = 'plots_' + foldername
+    # os.makedirs(figure_foldername, exist_ok=True)
+    # plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_test_subject_' + str(test_subject) + '-merge_test_' + str(merge_test) + '.png', pad_inches=0)
+    # time.sleep(0.1)
 
 # plt.show()
 k = 1
