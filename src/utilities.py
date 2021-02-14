@@ -87,6 +87,14 @@ def cd_clip(predictions, corr):
     return np.mean(pred[corr]) - np.mean(pred[~corr])
 
 
+def correlation_clip(labels, predictions):
+    clipcor = np.clip(predictions, 0.1, 1)
+    if len(set(clipcor)) == 1:
+        return 0
+    corr = np.corrcoef(labels, clipcor)
+    return corr[0, 1]
+
+
 def evaluation_methods(labels, predictions, correct, method):
     res = []
     if 'MAE' in method:
@@ -99,6 +107,8 @@ def evaluation_methods(labels, predictions, correct, method):
         res.append(mca_clip(predictions, correct))
     if 'CD' in method:
         res.append(cd_clip(predictions, correct))
+    if 'COR' in method:
+        res.append(correlation_clip(labels, predictions))
     return res
 
 
