@@ -86,6 +86,14 @@ def cd_clip(predictions, corr):
         return -0.99
     return np.mean(pred[corr]) - np.mean(pred[~corr])
 
+def ncd_clip(predictions, corr):
+    pred = np.clip(predictions, 0, 1)
+    if len(corr) == np.sum(corr):
+        return -0.99
+    if np.std(pred[corr]) == 0 or np.std(pred[~corr]) == 0:
+        return 0
+    return np.mean(pred[corr])/np.std(pred[corr]) - np.mean(pred[~corr])/np.std(pred[~corr])
+
 
 def correlation_clip(labels, predictions):
     clipcor = np.clip(predictions, 0.1, 1)
@@ -109,6 +117,8 @@ def evaluation_methods(labels, predictions, correct, method):
         res.append(cd_clip(predictions, correct))
     if 'COR' in method:
         res.append(correlation_clip(labels, predictions))
+    if 'NCD' in method:
+        res.append(ncd_clip(predictions, correct))
     return res
 
 

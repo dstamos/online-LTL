@@ -28,26 +28,26 @@ def standard_error(data, axis=0, correct=False, nSeed=1):
 
 def plotSE(data, x, color, label, correct=False, nSeed=1):
     m, ll, hl = standard_error(data, correct=correct, nSeed=1)
-    plt.plot(x, m, color, label=label)
+    plt.plot(x, m, '.-', color=color, label=label)
     plt.fill_between(x, ll, hl, alpha=0.1, color=color)
     return
 
-def plotError(data, pct_steps, conditions, evaluations, nSeed, folder='../../analysis/', name='all_subj_SE.png'):
+
+def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, folder='../../analysis/'):
     colors = ['tab:grey', 'tab:red', 'tab:green', 'tab:blue']
-    labels = ['Naive', 'ITL', 'Single', 'Meta']
-    titles1 =['Non-merged', 'Merged']
-    titles2 =['MSE', 'CD']
     f = plt.figure(figsize=figsize, dpi=dpi)
-    for i in range(2):
-        for evc, ev in enumerate([1, 3]):
-            plt.subplot(2, 2, i*2+evc+1)
-            for cond in range(len(conditions)):
-                plotSE(data[i, ev, cond, :, :], pct_steps, colors[cond], labels[cond], True, nSeed)
-                plt.xlim([0.02, 0.8])
-            plt.title(titles1[i]+' - '+titles2[evc])
-    plt.tight_layout()
+    c = 1
+    for ev in eval_to_plot:
+        plt.subplot(ratio[0], ratio[1], c)
+        evi = settings['evaluations'].index(ev)
+        for ind, nam in cond_to_plot.items():
+            plotSE(data[evi, ind, :, skip:], settings['tr_pct'][skip:], colors[ind], nam, True, len(settings['seed_range']))
+            plt.xlim([settings['tr_pct'][skip:][0], settings['tr_pct'][-1]])
+        plt.ylabel(ev)
+        c +=1
+    plt.suptitle(title)
     plt.legend(frameon=False)
-    plt.savefig(folder+name, pad_inches=0)
+    plt.savefig(folder+title, pad_inches=0)
     plt.close(f)
 
 def plotGrid(weight, pct_steps, metaLen, folder='../../analysis/', name='all_subj_Importance_Grid.png'):
