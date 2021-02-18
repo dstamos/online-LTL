@@ -20,20 +20,18 @@ def confidence_interval(data, axis=0, confidence=0.95):
     h = se * sp.t.ppf((1 + confidence) / 2., n - 1)
     return m, m - h, m + h
 
-def standard_error(data, axis=0, correct=False, nSeed=1):
+def standard_error(data, axis=0):
     m, se = np.nanmean(data, axis), sp.sem(data, axis)
-    if correct:
-        se = se*np.sqrt(len(m)) /np.sqrt(len(m)*nSeed)
     return m, m - se, m + se
 
-def plotSE(data, x, color, label, correct=False, nSeed=1):
-    m, ll, hl = standard_error(data, correct=correct, nSeed=1)
+def plotSE(data, x, color, label):
+    m, ll, hl = standard_error(data)
     plt.plot(x, m, '.-', color=color, label=label)
     plt.fill_between(x, ll, hl, alpha=0.1, color=color)
     return
 
 
-def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, folder='../../analysis/'):
+def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, folder='analysis/'):
     colors = ['tab:grey', 'tab:red', 'tab:green', 'tab:blue']
     f = plt.figure(figsize=figsize, dpi=dpi)
     c = 1
@@ -41,7 +39,7 @@ def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, fo
         plt.subplot(ratio[0], ratio[1], c)
         evi = settings['evaluations'].index(ev)
         for ind, nam in cond_to_plot.items():
-            plotSE(data[evi, ind, :, skip:], settings['tr_pct'][skip:], colors[ind], nam, True, len(settings['seed_range']))
+            plotSE(data[evi, ind, :, skip:], settings['tr_pct'][skip:], colors[ind], nam)
             plt.xlim([settings['tr_pct'][skip:][0], settings['tr_pct'][-1]])
         plt.ylabel(ev)
         c +=1
@@ -50,37 +48,41 @@ def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, fo
     plt.savefig(folder+title, pad_inches=0)
     plt.close(f)
 
-def plotGrid(weight, pct_steps, metaLen, folder='../../analysis/', name='all_subj_Importance_Grid.png'):
-    X, Y = np.meshgrid(pct_steps, np.arange(metaLen)+1)
-    wp = np.nanmean(weight, 1)
+def plotGrid(w, pct_steps, title, ratio=[1, 1], folder='analysis/'):
+    metalen = w.shape[-2]
+    if len(w.shape) == 2:
+        n_fig = 1
+        w = np.expand_dims(w, 1)
+    else:
+        n_fig = w.shape[1]
+    X, Y = np.meshgrid(pct_steps, np.arange(metalen)+1)
     f = plt.figure(figsize=figsize, dpi=dpi)
-    titles1 = ['Not Merged', 'Merged']
-    titles2 = ['Bias', 'RT']
-    for i in range(2):
-        for fc, feat in enumerate([0, -1]):
-            ax = f.add_subplot(2, 2, i*2+fc+1, projection='3d')
-            ax.plot_wireframe(X, Y, wp[i, :, feat, :])
-            plt.title(titles1[i]+' - '+titles2[fc])
+    for i in range(n_fig):
+        ax = f.add_subplot(ratio[0], ratio[1], i+1, projection='3d')
+        ax.plot_wireframe(X, Y, w[:, i, :])
     plt.xlabel('Fine Tunning')
     plt.ylabel('#Train Tasks')
-    plt.savefig(folder+name, pad_inches=0)
+    plt.suptitle(title)
+    plt.savefig(folder+title, pad_inches=0)
     plt.close(f)
 
-def plotImportance2D(w, folder='../../analysis/', name='all_subj_Importance_2D.png'):
+def plotImportance2D(w, settings, skip, title, ratio=[1, 1], ylabel='Importance', folder='analysis/'):
+    if len(w.shape) == 2:
+        n_fig = 1
+        w = np.expand_dims(w, 1)
+    else:
+        n_fig = w.shape[1]
     f = plt.figure(figsize=figsize, dpi=dpi)
-    titles1 = ['Not Merged', 'Merged']
-    titles2 = ['Bias', 'RT']
-    for i in range(2):
-        for feat in range(2):
-            ax = f.add_subplot(2, 2, i * 2 + feat + 1)
-            ax.plot(w[i,:,feat])
-            plt.title(titles1[i] + ' - ' + titles2[feat])
-    plt.ylabel('Importance')
-    plt.xlabel('# Training Tasks')
-    plt.savefig(folder + name, pad_inches=0)
+    for i in range(n_fig):
+        plt.subplot(ratio[0], ratio[1], i + 1)
+        plotSE(w[:, i, :], settings['tr_pct'][skip:], 'b', '')
+    plt.ylabel(ylabel)
+    plt.xlabel('% Fine tuning')
+    plt.suptitle(title)
+    plt.savefig(folder + title, pad_inches=0)
     plt.close(f)
 
-def plot_topos(w, folder='../../analysis/', name='all_subj_Scalp.png',supTitle=[]):
+def plot_topos(w, folder='analysis/', name='all_subj_Scalp.png',supTitle=[]):
     vmin = np.min(w)
     vmax = np.max(w)
     f = plt.figure(figsize=figsize, dpi=dpi)
@@ -99,7 +101,7 @@ def plot_topos(w, folder='../../analysis/', name='all_subj_Scalp.png',supTitle=[
     plt.savefig(folder + name, pad_inches=0)
     plt.close(f)
 
-def plot_topo_gif(w, folder='../../analysis/TopoGif/', name='all_subj_Scalp'):
+def plot_topo_gif(w, folder='analysis/TopoGif/', name='all_subj_Scalp'):
     for i in range(w.shape[1]):
         ind = str(i).zfill(2)
         plot_topos(w[:, i, :], folder, name+ind+'.png','# Training sets: '+ind)

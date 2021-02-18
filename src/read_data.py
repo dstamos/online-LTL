@@ -90,7 +90,7 @@ def read_data(settings, add_extra=[], verbose=True):
     seed_range = settings['seed_range']
     tr_pct = settings['tr_pct']
     prec = settings['prec']
-    fitness = settings['fitness']
+    fitness = settings['fitness'][0]
     evaluations = settings['evaluations']
     conditions = settings['conditions']
     nFeatures = settings['nFeatures']
@@ -101,54 +101,41 @@ def read_data(settings, add_extra=[], verbose=True):
     nPoints = len(tr_pct)
     subjFolder = os.listdir(foldername)
     nSubj = len(subjFolder)
+    nSeed = len(seed_range)
     metaLen = (nSubj-2)*3
 
     beval = len(evaluations)
     bevalex = len(add_extra)
 
-    data = np.empty((len(fitness), len(merged), beval+bevalex, len(conditions), nSubj, nPoints))
-    weight = np.empty((len(fitness), len(merged), nSubj, metaLen, nFeatures, nPoints))
-    reg_par = np.empty((len(fitness), len(merged), nSubj, nPoints))
-
-    seeds = np.empty((len(seed_range), len(evaluations+add_extra), len(conditions), nPoints))
-    seeds_w = np.empty((len(seed_range), metaLen, nFeatures, nPoints))
-    seeds_r = np.empty((len(seed_range), nPoints))
-    seeds[:] = np.nan
+    data = np.zeros((len(merged), beval+bevalex, len(conditions), nSubj*nSeed, nPoints))
+    weight = np.zeros((len(merged), nSubj*nSeed, metaLen, nFeatures, nPoints))
+    reg_par = np.zeros((len(merged), nSubj*nSeed, nPoints))
 
     for s in range(nSubj):
-        for fc, fit in enumerate(fitness):
-            for mc, m in enumerate(merged):
-                for pc, p in enumerate(tr_pct):
-                    for seed in seed_range:
-                        try:
-                            filename = './' + foldername + '/' + subjFolder[s] + '/seed_' + str(seed) + prec.format(p)\
-                                       + '-merge_test_' + str(m) + '-fitness_' + fit + '.pckl'
-                            f = open(filename, "rb")
-                            aux = pickle.load(f)
-                            f.close()
-                            for i, cond in enumerate(conditions):
-                                if cond == 'meta':
-                                    seeds[seed, :beval, i, pc] = aux['test_performance_meta'][-1, :]
-                                else:
-                                    seeds[seed, :beval, i, pc] = aux['test_performance_' + cond]
-                            mdl = aux['best_model_meta']
-                            w = aux['all_weight_vectors_meta']
-                            if add_extra:
-                                temp = calculate_evaluation(add_extra, conditions, seed, dataset, useRT, aux['settings'], mdl, w)
-                                seeds[seed, beval:, :, pc] = temp
-                            if w:
-                                w = np.mean(np.abs(np.array(w)), 1)
-                                seeds_w[seed, :, :, pc] = w / np.sum(w, 1, keepdims=True)
-                            seeds_r[seed, pc] = mdl.regularization_parameter
-                        except Exception as e:
-                            if verbose:
-                                print('broken', s, m, p, seed)
-                            continue
-                seeds[seeds == -.99] = np.nan
-                data[fc, mc, :, :, s, :] = np.nanmean(seeds, 0)
-                weight[fc, mc, s, :, :, :] = np.nanmean(seeds_w, 0)
-                reg_par[fc, mc, s, :] = np.nanmean(seeds_r, 0)
-                seeds[:] = np.nan
-                seeds_w[:] = np.nan
-
+        for mc, m in enumerate(merged):
+            for pc, p in enumerate(tr_pct):
+                for seed in seed_range:
+                    try:
+                        filename = './' + foldername + '/' + subjFolder[s] + '/seed_' + str(seed) + prec.format(p)\
+                                   + '-merge_test_' + str(m) + '-fitness_' + fitness + '.pckl'
+                        f = open(filename, "rb")
+                        aux = pickle.load(f)
+                        f.close()
+                        for i, cond in enumerate(conditions):
+                            if cond == 'meta':
+                                data[mc, :beval, i, s*nSeed+seed, pc] = aux['test_performance_meta'][-1, :]
+                            else:
+                                data[mc, :beval, i, s * nSeed + seed, pc] =aux['test_performance_' + cond]
+                        mdl = aux['best_model_meta']
+                        w = aux['all_weight_vectors_meta']
+                        if add_extra:
+                            temp = calculate_evaluation(add_extra, conditions, seed, dataset, useRT, aux['settings'], mdl, w)
+                            data[mc, beval:, i:, s * nSeed + seed, pc]  = temp
+                        if not np.any(w==None):
+                            w = np.mean(np.abs(np.array(w)), 1)
+                            weight[mc, s * nSeed + seed, :, :, pc] = w / np.nansum(w, 1, keepdims=True)
+                        reg_par[mc, s * nSeed + seed, pc] = mdl.regularization_parameter
+                    except Exception as e:
+                        if verbose:
+                            print('broken', s, m, p, seed)
     return data, weight, reg_par
