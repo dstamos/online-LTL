@@ -9,8 +9,8 @@ import matplotlib.ticker as mtick
 font = {'size': 36}
 matplotlib.rc('font', **font)
 
-seed_range = range(30)
-test_subject_range = range(8)
+seed_range = range(20)
+test_subject_range = range(10)
 merge_test = False
 evaluation_idx = 1
 tr_pct_range = np.arange(0.0, 0.625, 0.025)
@@ -31,7 +31,7 @@ for test_subject_idx, test_subject in enumerate(test_subject_range):
     all_seeds_meta = np.full([len(seed_range), len(tr_pct_range)], np.nan)
     all_seeds_itl = np.full([len(seed_range), len(tr_pct_range)], np.nan)
     for seed_idx, seed in enumerate(seed_range):
-        foldername = 'results-first_dataset_nmse_30_seeds'
+        foldername = 'results-second_dataset_new_data_saving_preds'
         foldername_with_subfolder = foldername + '/test_subject_' + str(test_subject)
 
         for tr_pct_idx, tr_pct in enumerate(tr_pct_range):
@@ -48,7 +48,7 @@ for test_subject_idx, test_subject in enumerate(test_subject_range):
                 settings = results['settings']
 
             except Exception as e:
-                print('broken', test_subject, tr_pct_idx, seed)
+                print(f'failed: subject: {test_subject:2d} | seed: {seed:2d} | pct: {tr_pct:0.4f}')
                 continue
 
             all_seeds_meta[seed_idx, tr_pct_idx] = test_performance_meta[-1][evaluation_idx]
@@ -94,7 +94,8 @@ ax.fill_between(x_range, average_naive - std_naive, average_naive + std_naive, a
 ax.xaxis.set_major_formatter(mtick.PercentFormatter())
 
 if evaluation_idx == 1:
-    plt.ylim(bottom=0.75, top=2.5)
+    # plt.ylim(bottom=0.75, top=2.5)
+    plt.ylim(bottom=0.5, top=2.5)
 plt.xlabel('training %')
 plt.ylabel('performance')
 plt.legend()

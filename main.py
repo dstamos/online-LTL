@@ -18,20 +18,16 @@ import sys
 def main(settings, seed):
     np.random.seed(seed)
 
-    all_features, all_labels, all_experiment_names, all_correct = load_data_essex_one(useRT=False)
+    all_features, all_labels, all_experiment_names, all_correct = load_data_essex_two(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
 
-    test_performance_naive = train_test_naive(data, settings)
-    # test_performance_naive = [np.nan]
+    test_performance_naive, all_predictions_naive = train_test_naive(data, settings)
 
-    test_performance_single_task = train_test_single_task(data, settings)
-    # test_performance_single_task = [np.nan]
+    test_performance_single_task, all_predictions_single_task, all_weights_single_task = train_test_single_task(data, settings)
 
-    test_performance_itl = train_test_itl(data, settings)
-    # test_performance_itl = [np.nan]
+    test_performance_itl, all_predictions_itl, all_weights_itl = train_test_itl(data, settings)
 
-    best_model_meta, test_performance_meta, all_weight_vectors_meta = train_test_meta(data, settings, verbose=True)
-    # best_model_meta, test_performance_meta = None, [[np.nan]]
+    best_model_meta, test_performance_meta, all_weight_vectors_meta, all_predictions_meta = train_test_meta(data, settings, verbose=True)
 
     results = {'test_performance_naive': test_performance_naive,
                'test_performance_single_task': test_performance_single_task,
@@ -39,16 +35,22 @@ def main(settings, seed):
                'test_performance_meta': test_performance_meta,
                'all_weight_vectors_meta': all_weight_vectors_meta,
                'best_model_meta': best_model_meta,
+               'all_predictions_naive': all_predictions_naive,
+               'all_predictions_single_task': all_predictions_single_task,
+               'all_weights_single_task': all_weights_single_task,
+               'all_predictions_itl': all_predictions_itl,
+               'all_weights_itl': all_weights_itl,
+               'all_predictions_meta': all_predictions_meta,
                'settings': settings}
 
     save_results(results,
-                 foldername='results-first_dataset_nmse/' + 'test_subject_' + str(settings['test_subject']),
+                 foldername='results-second_dataset_nmse_christoph_classic_range/' + 'test_subject_' + str(settings['test_subject']),
                  filename='seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(settings['test_tasks_tr_points_pct']) + '-merge_test_' + str(settings['merge_test']) + '-fitness_' + settings['val_method'][0])
 
-    print(f'{"Naive":20s} {test_performance_naive[-2]:6.4f} {test_performance_naive[-1]*100:6.4f}% \n'
-          f'{"Single-task":20s} {test_performance_single_task[-2]:6.4f} {test_performance_single_task[-1]*100:6.4f}% \n'
-          f'{"ITL":20s} {test_performance_itl[-2]:6.4f} {test_performance_itl[-1]*100:6.4f}% \n'
-          f'{"Meta":20s} {test_performance_meta[-1][-2]:6.4f} {test_performance_meta[-1][-1]*100:6.4f}%')
+    print(f'{"Naive":20s} {test_performance_naive[1]:6.4f} {test_performance_naive[-1]*100:6.4f}% \n'
+          f'{"Single-task":20s} {test_performance_single_task[1]:6.4f} {test_performance_single_task[-1]*100:6.4f}% \n'
+          f'{"ITL":20s} {test_performance_itl[1]:6.4f} {test_performance_itl[-1]*100:6.4f}% \n'
+          f'{"Meta":20s} {test_performance_meta[-1][1]:6.4f} {test_performance_meta[-1][-1]*100:6.4f}%')
 
 
 if __name__ == "__main__":
@@ -60,14 +62,14 @@ if __name__ == "__main__":
     c) You go to the validation tasks, fine-tune the model on each task (on training points) and check the performance (on test points).
     d) Pick the metaparameter that resulted in the best average performance on the validation tasks.
     e) Go to the test tasks using the optimal metaparameter, fine-tune on a small number of points (or don't) and test the performance.
-    """
+    """ 
 
     # Parameters
-    # test_subject_range = range(0, 8)
-    test_subject_range = [5]
+    test_subject_range = range(0, 10)
+    # test_subject_range = [0]
 
-    # test_tasks_tr_split_range = np.arange(0.0, 0.525, 0.025)
-    test_tasks_tr_split_range = np.array([0.25])
+    test_tasks_tr_split_range = np.arange(0.0, 0.625, 0.025)
+    # test_tasks_tr_split_range = np.array([test_tasks_tr_split_range[1]])
 
     merge_test_range = [False]
 

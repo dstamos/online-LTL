@@ -63,15 +63,19 @@ def train_test_single_task(data, settings):
     model_itl.fit(x_merged, y_merged)
 
     all_performances = []
+    all_predictions = []
+    all_weights = []
     for task_idx in range(len(data['test_tasks_indexes'])):
         x_test, y_test, corr_test = preprocessing.transform(data['test_tasks_test_features'][task_idx], data['test_tasks_test_labels'][task_idx], data['test_tasks_test_corr'][task_idx], fit=False, multiple_tasks=False)
         # Testing
         test_predictions = model_itl.predict(x_test)
+        all_predictions.append(test_predictions)
+        all_weights.append(model_itl.weight_vector)
         all_performances.append(evaluation_methods(y_test, test_predictions, corr_test,  settings['evaluation']))
     test_performance = np.mean(all_performances, 0)
     print(f'{"Single task":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
 
-    return test_performance
+    return test_performance, all_predictions, all_weights
 
 
 class ITL:
@@ -82,7 +86,10 @@ class ITL:
     def fit(self, features, labels):
         dims = features.shape[1]
 
-        weight_vector = lstsq(features.T @ features + self.regularization_parameter * np.eye(dims), features.T @ labels)[0]
+        try:
+            weight_vector = lstsq(features.T @ features + self.regularization_parameter * np.eye(dims), features.T @ labels)[0]
+        except:
+            weight_vector = np.zeros(dims)
         self.weight_vector = weight_vector
 
     def predict(self, features):

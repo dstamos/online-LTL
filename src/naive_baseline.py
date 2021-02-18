@@ -11,6 +11,7 @@ def train_test_naive(data, settings):
     # "Training"
     tt = time()
     all_performances = []
+    all_predictions = []
     for task_idx in range(len(data['test_tasks_indexes'])):
         y_tr = data['test_tasks_tr_labels'][task_idx]
         y_test = data['test_tasks_test_labels'][task_idx]
@@ -24,8 +25,9 @@ def train_test_naive(data, settings):
 
         # Testing
         test_predictions = prediction_value * np.ones(len(y_test))
+        all_predictions.append(test_predictions)
         all_performances.append(evaluation_methods(y_test, test_predictions, corr, settings['evaluation']))
     test_performance = np.mean(all_performances, 0)
     print(f'{"Naive":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
 
-    return test_performance
+    return test_performance, all_predictions

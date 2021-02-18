@@ -10,7 +10,7 @@ font = {'size': 36}
 matplotlib.rc('font', **font)
 
 seed_range = range(30)
-test_subject_range = range(8)
+test_subject_range = range(10)
 merge_test = False
 evaluation_idx = 1
 
@@ -19,7 +19,7 @@ evaluation_names = ['MAE', 'NMSE', 'MSE', 'MCA', 'CD']
 all_errors_itl = []
 all_errors_naive = []
 for test_subject in test_subject_range:
-    foldername = 'results-first_dataset_nmse_30_seeds'
+    foldername = 'results-second_dataset_new_data_saving_preds'
     foldername_with_subfolder = foldername + '/test_subject_' + str(test_subject)
     tr_val_pct_range = np.arange(0.0, 0.625, 0.025)
     test_tasks_tr_points_pct = tr_val_pct_range
@@ -90,10 +90,10 @@ for test_subject in test_subject_range:
     plt.ylabel('performance')
     plt.legend()
 
-    # figure_foldername = 'plots_' + foldername
-    # os.makedirs(figure_foldername, exist_ok=True)
-    # plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_test_subject_' + str(test_subject) + '-merge_test_' + str(merge_test) + '.png', pad_inches=0)
-    # time.sleep(0.1)
+    figure_foldername = 'plots_' + foldername
+    os.makedirs(figure_foldername, exist_ok=True)
+    plt.savefig(figure_foldername + '/' + evaluation_names[evaluation_idx] + '_test_subject_' + str(test_subject) + '-merge_test_' + str(merge_test) + '.png', pad_inches=0)
+    time.sleep(0.1)
 
 # plt.show()
 k = 1
