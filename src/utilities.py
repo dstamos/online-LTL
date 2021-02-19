@@ -83,14 +83,14 @@ def mca_clip(predictions, corr):
 def cd_clip(predictions, corr):
     pred = np.clip(predictions, 0, 1)
     if len(corr) == np.sum(corr):
-        return -0.99
+        return np.nan
     return np.mean(pred[corr]) - np.mean(pred[~corr])
 
 def ncd_clip(predictions, corr):
     pred = np.clip(predictions, 0, 1)
     if len(corr) == np.sum(corr):
-        return -0.99
-    if np.std(pred[corr]) == 0 or np.std(pred[~corr]) == 0:
+        return np.nan
+    if len(np.unique(pred[corr])) == 1 or len(np.unique(pred[~corr])) == 1:
         return 0
     return np.mean(pred[corr])/np.std(pred[corr]) - np.mean(pred[~corr])/np.std(pred[~corr])
 
