@@ -102,6 +102,28 @@ def correlation_clip(labels, predictions):
     corr = np.corrcoef(labels, clipcor)
     return corr[0, 1]
 
+def fisher_clip(predictions, corr):
+    pred = np.clip(predictions, 0, 1)
+    if len(corr) == np.sum(corr):
+        return np.nan
+    if len(np.unique(pred[corr])) == 1 or len(np.unique(pred[~corr])) == 1:
+        return 0
+    mc = np.mean(pred[corr])
+    mi = np.mean(pred[~corr])
+    m = np.mean(pred)
+    vc = np.var(pred[corr])
+    vi = np.var(pred[~corr])
+    nc = np.sum(corr)
+    ni = np.sum(~corr)
+    return (nc*(mc-m)**2 + ni*(mi-m)**2) / (nc*vc + ni*vi)
+
+def fisher_clip_equal(predictions, corr):
+    pred = np.clip(predictions, 0, 1)
+    if len(corr) == np.sum(corr):
+        return np.nan
+    if len(np.unique(pred[corr])) == 1 or len(np.unique(pred[~corr])) == 1:
+        return 0
+    return (np.mean(pred[corr])**2 - np.mean(pred[~corr])**2) / (np.var(pred[corr]) + np.var(pred[~corr]))
 
 def evaluation_methods(labels, predictions, correct, method):
     res = []
@@ -119,6 +141,10 @@ def evaluation_methods(labels, predictions, correct, method):
         res.append(correlation_clip(labels, predictions))
     if 'NCD' in method:
         res.append(ncd_clip(predictions, correct))
+    if 'FI' in method:
+        res.append(fisher_clip(predictions, correct))
+    if 'FIE' in method:
+        res.append(fisher_clip_equal(predictions, correct))
     return res
 
 

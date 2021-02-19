@@ -31,18 +31,22 @@ def plotSE(data, x, color, label):
     return
 
 
-def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, folder='analysis/'):
+def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, folder='analysis/', ylim=[], xline=[]):
     colors = ['tab:grey', 'tab:red', 'tab:green', 'tab:blue']
     f = plt.figure(figsize=figsize, dpi=dpi)
-    c = 1
-    for ev in eval_to_plot:
-        plt.subplot(ratio[0], ratio[1], c)
+    for c, ev in enumerate(eval_to_plot):
+        plt.subplot(ratio[0], ratio[1], c+1)
         evi = settings['evaluations'].index(ev)
         for ind, nam in cond_to_plot.items():
             plotSE(data[evi, ind, :, skip:], settings['tr_pct'][skip:], colors[ind], nam)
-            plt.xlim([settings['tr_pct'][skip:][0], settings['tr_pct'][-1]])
+        xlim = [settings['tr_pct'][skip:][0], settings['tr_pct'][-1]]
+        plt.xlim(xlim)
+        if ylim:
+            plt.ylim(ylim[c])
+        if xline:
+            if xline[c]:
+                plt.plot([xlim[0], xlim[1]], [xline[c], xline[c]], '--k', label='Ground Truth')
         plt.ylabel(ev)
-        c +=1
     plt.suptitle(title)
     plt.legend(frameon=False)
     plt.savefig(folder+title, pad_inches=0)
