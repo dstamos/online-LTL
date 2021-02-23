@@ -168,11 +168,9 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         tasks_indexes = select_tasks(tasks_indexes, test_tasks_tr_features, test_tasks_tr_labels, all_features, all_labels)
     # Validation tasks are picked randomly (not from the same person)
     if settings['merge_test']:
-        list_of_subjects = list(range(n_all_subjects))
-        list_without_test_subjects = [s for s in list_of_subjects if s not in test_subjects]
-        validation_tasks_indexes = np.random.choice(list_without_test_subjects) * n_experiments_per_subject + np.arange(0, 3)
-        for idx in validation_tasks_indexes:
-            tasks_indexes.remove(idx)
+        aval_subj = np.unique(np.array(tasks_indexes) // 3)
+        validation_tasks_indexes = np.random.choice(aval_subj) * n_experiments_per_subject + np.arange(0, 3)
+        tasks_indexes = [i for i in tasks_indexes if i not in validation_tasks_indexes]
         training_tasks_indexes = tasks_indexes
     else:
         training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
@@ -315,7 +313,7 @@ def select_tasks(tasks_indexes, test_features, test_labels, all_features, all_la
     if not test_labels:
         return tasks_indexes
     score = np.zeros((len(test_features), len(tasks_indexes)))
-    baseline = np.zeros(tasks_indexes)
+    baseline = np.zeros(len(tasks_indexes))
     for i, ti in enumerate(tasks_indexes):
         mdl1 = LR()
         src_trials = int(all_features[ti].shape[0]*pct)
