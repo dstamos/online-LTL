@@ -1,5 +1,7 @@
 import numpy as np
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression as LR
+from src.utilities import evaluation_methods
 
 
 def load_data_essex_one(delete0=True, useStim=True, useRT=True, exclude=[7]):
@@ -91,6 +93,12 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     n_all_subjects = len(all_features) // n_experiments_per_subject  # Hardcoded - the assumption is that all subjects had 3 days of experiments
     test_subjects = [settings['test_subject']]
 
+    tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
+    val_tasks_tr_points_pct = settings['val_tasks_tr_points_pct']
+    val_tasks_test_points_pct = settings['val_tasks_test_points_pct']
+    test_tasks_tr_points_pct = settings['test_tasks_tr_points_pct']
+    test_tasks_test_points_pct = settings['test_tasks_test_points_pct']
+
     test_tasks_indexes = []
     for test_subject in test_subjects:
         curr_indexes = test_subject * n_experiments_per_subject + np.arange(0, 3)
@@ -99,6 +107,65 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     tasks_indexes = list(range(0, n_all_subjects * n_experiments_per_subject))
     for idx in test_tasks_indexes:
         tasks_indexes.remove(idx)
+
+    # Test tasks (training and test data)
+    test_tasks_tr_features = []
+    test_tasks_tr_labels = []
+    test_tasks_tr_corr = []
+    test_tasks_test_features = []
+    test_tasks_test_labels = []
+    test_tasks_test_corr = []
+    if settings['merge_test']:
+        x = np.zeros((0, all_features[0].shape[1]))
+        y = np.zeros(0)
+        corr = np.zeros(0, bool)
+        for task_index in test_tasks_indexes:
+            x = np.concatenate((x, all_features[task_index]), 0)
+            y = np.concatenate((y, all_labels[task_index]), 0)
+            corr = np.concatenate((corr, all_corr[task_index]), 0)
+        test_tasks_indexes = [0]  # There is only one training task
+        n_all_points = len(y)
+        n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
+
+        training_features = x[:n_tr_points, :]
+        training_labels = y[:n_tr_points]
+        training_corr = corr[:n_tr_points]
+        test_features = x[n_tr_points:, :]
+        test_labels = y[n_tr_points:]
+        test_corr = corr[n_tr_points:]
+
+        test_tasks_tr_features.append(training_features)
+        test_tasks_tr_labels.append(training_labels)
+        test_tasks_tr_corr.append(training_corr)
+        test_tasks_test_features.append(test_features)
+        test_tasks_test_labels.append(test_labels)
+        if all_corr:
+            test_tasks_test_corr.append(test_corr)
+    else:
+        for task_index in test_tasks_indexes:
+            x = all_features[task_index]
+            y = all_labels[task_index]
+            corr = all_corr[task_index]
+            n_all_points = len(y)
+            shuffled_points_indexes = np.random.permutation(range(n_all_points))
+            n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
+
+            training_features = x[shuffled_points_indexes[:n_tr_points], :]
+            training_labels = y[shuffled_points_indexes[:n_tr_points]]
+            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
+            test_features = x[shuffled_points_indexes[n_tr_points:], :]
+            test_labels = y[shuffled_points_indexes[n_tr_points:]]
+            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
+
+            test_tasks_tr_features.append(training_features)
+            test_tasks_tr_labels.append(training_labels)
+            test_tasks_tr_corr.append(training_corr)
+            test_tasks_test_features.append(test_features)
+            test_tasks_test_labels.append(test_labels)
+            test_tasks_test_corr.append(test_corr)
+
+    if settings['select_tasks']:
+        tasks_indexes = select_tasks(tasks_indexes, test_tasks_tr_features, test_tasks_tr_labels, all_features, all_labels)
     # Validation tasks are picked randomly (not from the same person)
     if settings['merge_test']:
         list_of_subjects = list(range(n_all_subjects))
@@ -109,12 +176,6 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         training_tasks_indexes = tasks_indexes
     else:
         training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
-
-    tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
-    val_tasks_tr_points_pct = settings['val_tasks_tr_points_pct']
-    val_tasks_test_points_pct = settings['val_tasks_test_points_pct']
-    test_tasks_tr_points_pct = settings['test_tasks_tr_points_pct']
-    test_tasks_test_points_pct = settings['test_tasks_test_points_pct']
 
     # Training tasks (only training data)
     tr_tasks_tr_features = []
@@ -201,62 +262,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             if verbose is True:
                 print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
 
-    # Test tasks (training and test data)
-    test_tasks_tr_features = []
-    test_tasks_tr_labels = []
-    test_tasks_tr_corr = []
-    test_tasks_test_features = []
-    test_tasks_test_labels = []
-    test_tasks_test_corr = []
-    if settings['merge_test']:
-        x = np.zeros((0, all_features[0].shape[1]))
-        y = np.zeros(0)
-        corr = np.zeros(0, bool)
-        for task_index in test_tasks_indexes:
-            x = np.concatenate((x, all_features[task_index]), 0)
-            y = np.concatenate((y, all_labels[task_index]), 0)
-            corr = np.concatenate((corr, all_corr[task_index]), 0)
-        test_tasks_indexes = [0]# There is only one training task
-        n_all_points = len(y)
-        n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
 
-        training_features = x[:n_tr_points, :]
-        training_labels = y[:n_tr_points]
-        training_corr = corr[:n_tr_points]
-        test_features = x[n_tr_points:, :]
-        test_labels = y[n_tr_points:]
-        test_corr = corr[n_tr_points:]
-
-        test_tasks_tr_features.append(training_features)
-        test_tasks_tr_labels.append(training_labels)
-        test_tasks_tr_corr.append(training_corr)
-        test_tasks_test_features.append(test_features)
-        test_tasks_test_labels.append(test_labels)
-        if all_corr:
-            test_tasks_test_corr.append(test_corr)
-
-    else:
-        for task_index in test_tasks_indexes:
-            x = all_features[task_index]
-            y = all_labels[task_index]
-            corr = all_corr[task_index]
-            n_all_points = len(y)
-            shuffled_points_indexes = np.random.permutation(range(n_all_points))
-            n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
-
-            training_features = x[shuffled_points_indexes[:n_tr_points], :]
-            training_labels = y[shuffled_points_indexes[:n_tr_points]]
-            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
-            test_features = x[shuffled_points_indexes[n_tr_points:], :]
-            test_labels = y[shuffled_points_indexes[n_tr_points:]]
-            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
-
-            test_tasks_tr_features.append(training_features)
-            test_tasks_tr_labels.append(training_labels)
-            test_tasks_tr_corr.append(training_corr)
-            test_tasks_test_features.append(test_features)
-            test_tasks_test_labels.append(test_labels)
-            test_tasks_test_corr.append(test_corr)
 
             if verbose is True:
                 print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
@@ -304,3 +310,31 @@ def split_tasks(all_features, indexes, all_labels=None, all_corr=None):
     all_labels = [all_labels[indexes == task_idx] for task_idx in np.unique(indexes)]
     all_corr = [all_corr[indexes == task_idx] for task_idx in np.unique(indexes)]
     return all_features, all_labels, all_corr
+
+def select_tasks(tasks_indexes, test_features, test_labels, all_features, all_labels, pct=0.7, min_tasks=3):
+    if not test_labels:
+        return tasks_indexes
+    score = np.zeros((len(test_features), len(tasks_indexes)))
+    baseline = np.zeros(tasks_indexes)
+    for i, ti in enumerate(tasks_indexes):
+        mdl1 = LR()
+        src_trials = int(all_features[ti].shape[0]*pct)
+        x_tr_b = all_features[ti][:src_trials]
+        y_tr_b = all_labels[ti][:src_trials]
+        x_te = all_features[ti][src_trials:]
+        y_te = all_labels[ti][src_trials:]
+        mdl1.fit(x_tr_b, y_tr_b)
+        baseline[i] = mdl1.score(x_te, y_te)
+        for j in range(len(test_features)):
+            mdl2 = LR()
+            x_tr = np.concatenate((x_tr_b, test_features[j]))
+            y_tr = np.concatenate((y_tr_b, test_labels[j]))
+            mdl2.fit(x_tr, y_tr)
+            score[j, i] = mdl2.score(x_te, y_te)
+
+    mscore = np.mean(score, 0)
+    diff = mscore > baseline
+    if np.sum(diff) > min_tasks:
+        return tasks_indexes[diff]
+    else:
+        return tasks_indexes # All the tasks reduce the performance, maybe we should not use transfer learning
