@@ -5,7 +5,7 @@ from src.utilities import multiple_tasks_evaluation
 from time import time
 from copy import deepcopy
 from src.preprocessing import PreProcess
-from sklearn.model_selection import KFold
+from sklearn.model_selection import ShuffleSplit
 
 
 def train_test_meta(data, settings, verbose=True):
@@ -78,7 +78,7 @@ def train_test_meta(data, settings, verbose=True):
         all_weight_vectors = None
         test_task_predictions = best_model_ltl.predict(test_tasks_test_features)
     test_performance = multiple_tasks_evaluation(test_tasks_test_labels, test_task_predictions, test_tasks_test_corr, settings['evaluation'])
-    print(f'{"LTL":12s} | test performance: {test_performance[-1][0]:12.5f} | {time() - tt:5.2f}sec')
+    #print(f'{"LTL":12s} | test performance: {test_performance[-1][0]:12.5f} | {time() - tt:5.2f}sec')
     return best_model_ltl, test_performance, all_weight_vectors, test_task_predictions
 
 
@@ -129,7 +129,7 @@ class BiasLTL:
             # In this case for each task, split the given data and do cross validation. The retrain on all and return the corresponding weight vectors.
             best_regul_params = [None] * len(all_features)
             for task_idx in range(len(all_features)):
-                kf = KFold(n_splits=3)
+                kf = ShuffleSplit(n_splits=1, test_size=0.3)
                 kf.get_n_splits(all_features[task_idx])
 
                 best_performance = np.Inf
@@ -142,7 +142,7 @@ class BiasLTL:
                         y_tr, y_val = all_labels[task_idx][train_index], all_labels[task_idx][test_index]
                         corr_tr, corr_val = all_corr[task_idx][train_index], all_corr[task_idx][test_index]
 
-                        x_tr, y_tr, _ = preprocessing.transform(x_tr, y_tr, corr_tr, fit=True, multiple_tasks=False)
+                        x_tr, y_tr, _ = preprocessing.transform(x_tr, y_tr, corr_tr, fit=False, multiple_tasks=False)
                         x_val, y_val, corr_val = preprocessing.transform(x_val, y_val, corr_val, fit=False, multiple_tasks=False)
 
                         weight_vector = self.solve_wrt_w(self.metaparameter_, x_tr, y_tr, curr_regul_param)

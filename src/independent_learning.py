@@ -3,7 +3,7 @@ from scipy.linalg import lstsq
 from src.preprocessing import PreProcess
 from time import time
 from src.utilities import evaluation_methods
-from sklearn.model_selection import KFold
+from sklearn.model_selection import ShuffleSplit
 
 
 def train_test_itl(data, settings):
@@ -17,14 +17,14 @@ def train_test_itl(data, settings):
         y = data['test_tasks_tr_labels'][task_idx]
         corr = data['test_tasks_tr_corr'][task_idx]
 
-        cv_splits = 3
+        cv_splits = 1
         if len(y) < cv_splits:
             # In the case we don't enough enough data for 5-fold cross-validation for training (cold start), just use random data.
             x = np.random.randn(*np.concatenate([data['test_tasks_test_features'][task_idx] for task_idx in range(len(data['test_tasks_test_features']))]).shape)
             y = np.random.uniform(0, 1, len(x))
             corr = np.random.randint(0, 2, len(x))
 
-        kf = KFold(n_splits=cv_splits)
+        kf = ShuffleSplit(n_splits=1, test_size=0.3)
         kf.get_n_splits(x)
         preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
 
@@ -71,7 +71,7 @@ def train_test_itl(data, settings):
         all_weights.append(model_itl.weight_vector)
         all_performances.append(evaluation_methods(y_test, test_predictions, corr_test,  settings['evaluation']))
     test_performance = np.mean(all_performances, 0)
-    print(f'{"Independent":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
+    # print(f'{"Independent":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
 
     return test_performance, all_predictions, all_weights
 

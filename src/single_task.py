@@ -73,7 +73,7 @@ def train_test_single_task(data, settings):
         all_weights.append(model_itl.weight_vector)
         all_performances.append(evaluation_methods(y_test, test_predictions, corr_test,  settings['evaluation']))
     test_performance = np.mean(all_performances, 0)
-    print(f'{"Single task":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
+    #print(f'{"Single task":12s} | test performance: {test_performance[0]:12.5f} | {time() - tt:5.2f}sec')
 
     return test_performance, all_predictions, all_weights
 
