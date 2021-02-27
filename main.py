@@ -14,7 +14,6 @@ import time
 
 def main(settings, seed):
     t0 = time.time()
-    np.random.seed(seed)
 
     all_features, all_labels, all_experiment_names, all_correct = load_data_essex_two(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
@@ -81,7 +80,7 @@ if __name__ == "__main__":
         test_subject_range = [test_subject_range[int(sys.argv[5])]]
     else:
         seed_range = [0]
-    regul_param_range = np.logspace(-12, 4, 64)
+    regul_param_range = np.logspace(-12, 4, 36)
 
     fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
 
@@ -116,7 +115,7 @@ if __name__ == "__main__":
                                    'evaluation': evaluation,
                                    'val_method': [fitness],
                                    'merge_test': merge_test,
-                                   'select_tasks': False,
+                                   'seed': curr_seed,
                                    'merge_train': False}
                         main(options, curr_seed)
                         print('\n')
