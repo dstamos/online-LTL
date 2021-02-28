@@ -147,14 +147,15 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             y = all_labels[task_index]
             corr = all_corr[task_index]
             n_all_points = len(y)
+            shuffled_points_indexes = np.random.permutation(range(n_all_points))
             n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
 
-            training_features = x[:n_tr_points, :]
-            training_labels = y[:n_tr_points]
-            training_corr = corr[:n_tr_points]
-            test_features = x[n_tr_points:, :]
-            test_labels = y[n_tr_points:]
-            test_corr = corr[n_tr_points:]
+            training_features = x[shuffled_points_indexes[:n_tr_points], :]
+            training_labels = y[shuffled_points_indexes[:n_tr_points]]
+            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
+            test_features = x[shuffled_points_indexes[n_tr_points:], :]
+            test_labels = y[shuffled_points_indexes[n_tr_points:]]
+            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
 
             test_tasks_tr_features.append(training_features)
             test_tasks_tr_labels.append(training_labels)
@@ -163,11 +164,16 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             test_tasks_test_labels.append(test_labels)
             test_tasks_test_corr.append(test_corr)
 
-    # Validation tasks are picked based on the seed
-    aval_subj = np.unique(np.array(tasks_indexes) // 3)
-    validation_tasks_indexes = aval_subj[settings['seed']] * n_experiments_per_subject + np.arange(0, 3)
-    tasks_indexes = [i for i in tasks_indexes if i not in validation_tasks_indexes]
-    training_tasks_indexes = tasks_indexes
+    if settings['select_tasks']:
+        tasks_indexes = select_tasks(tasks_indexes, test_tasks_tr_features, test_tasks_tr_labels, all_features, all_labels)
+    # Validation tasks are picked randomly (not from the same person)
+    if settings['merge_test']:
+        aval_subj = np.unique(np.array(tasks_indexes) // 3)
+        validation_tasks_indexes = np.random.choice(aval_subj) * n_experiments_per_subject + np.arange(0, 3)
+        tasks_indexes = [i for i in tasks_indexes if i not in validation_tasks_indexes]
+        training_tasks_indexes = tasks_indexes
+    else:
+        training_tasks_indexes, validation_tasks_indexes = train_test_split(tasks_indexes, test_size=n_experiments_per_subject)
 
     # Training tasks (only training data)
     tr_tasks_tr_features = []
@@ -178,10 +184,11 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
         y = all_labels[task_index]
         corr = all_corr[task_index]
         n_all_points = len(y)
+        shuffled_points_indexes = np.random.permutation(range(n_all_points))
         n_tr_points = int(tr_tasks_tr_points_pct * n_all_points)
-        training_features = x[:n_tr_points, :]
-        training_labels = y[:n_tr_points]
-        training_corr = corr[:n_tr_points]
+        training_features = x[shuffled_points_indexes[:n_tr_points], :]
+        training_labels = y[shuffled_points_indexes[:n_tr_points]]
+        training_corr = corr[shuffled_points_indexes[:n_tr_points]]
 
         tr_tasks_tr_features.append(training_features)
         tr_tasks_tr_labels.append(training_labels)
@@ -233,14 +240,15 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
             y = all_labels[task_index]
             corr = all_corr[task_index]
             n_all_points = len(y)
+            shuffled_points_indexes = np.random.permutation(range(n_all_points))
             n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
 
-            training_features = x[:n_tr_points, :]
-            training_labels = y[:n_tr_points]
-            training_corr = corr[:n_tr_points]
-            test_features = x[n_tr_points:, :]
-            test_labels = y[n_tr_points:]
-            test_corr = corr[n_tr_points:]
+            training_features = x[shuffled_points_indexes[:n_tr_points], :]
+            training_labels = y[shuffled_points_indexes[:n_tr_points]]
+            training_corr = corr[shuffled_points_indexes[:n_tr_points]]
+            test_features = x[shuffled_points_indexes[n_tr_points:], :]
+            test_labels = y[shuffled_points_indexes[n_tr_points:]]
+            test_corr = corr[shuffled_points_indexes[n_tr_points:]]
 
             val_tasks_tr_features.append(training_features)
             val_tasks_tr_labels.append(training_labels)
