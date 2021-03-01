@@ -1,5 +1,5 @@
 from src.read_data import read_data
-from src.post.plots import plotError, plotGrid, plotImportance2D
+from src.post.plots import plotError, plotGrid, plotImportance2D, plot_change_distribution
 from src.data_management_essex import load_data_essex_two
 from src.utilities import fisher_clip
 import numpy as np
@@ -44,7 +44,7 @@ for i in range(10):
     title = 'SE for different Subj ' + str(i)
     plotError(data[0, :, :, i*30:(i+1)*30, :], settings, cond_to_plot, eval_to_plot, ratio, skip, title,xline=[[], [fcd[i]]])
 
-plot_change_distribution(w[0])
+plot_change_distribution(weight[0, :, 1:, :, skip:])
 
 if False:
     title = 'Bias Weight - Grid'

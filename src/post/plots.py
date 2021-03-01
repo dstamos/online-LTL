@@ -121,7 +121,7 @@ def plot_change_distribution(w, folder='analysis/', title = 'all_subj_change_dis
     res = np.empty((nseed, nsteps))
     for i in range(nseed):
         for j in range(nsteps):
-            res[i, j] = np.linalg.norm(w[i, 1, :, j] - w[i, -1, :, j])
+            res[i, j] = np.mean(np.sqrt((w[i, 0, :, j] - w[i, -1, :, j]) ** 2) / np.abs(w[i, 0, :, j]))
     f = plt.figure(figsize=figsize, dpi=dpi)
     plt.matshow(res, 0)
     plt.xlabel('Target %')
