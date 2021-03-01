@@ -114,3 +114,18 @@ def plot_topo_gif(w, folder='analysis/TopoGif/', name='all_subj_Scalp'):
     for f in files:
         images.append(imageio.imread(f))
     imageio.mimsave(folder+name+'.gif', images)
+
+def plot_change_distribution(w, folder='analysis/', title = 'all_subj_change_distribution'):
+    nseed = w.shape[0]
+    nsteps = w.shape[-1]
+    res = np.empty((nseed, nsteps))
+    for i in range(nseed):
+        for j in range(nsteps):
+            res[i, j] = np.linalg.norm(w[i, 1, :, j] - w[i, -1, :, j])
+    f = plt.figure(figsize=figsize, dpi=dpi)
+    plt.matshow(res, 0)
+    plt.xlabel('Target %')
+    plt.ylabel('Seeds')
+    plt.colorbar()
+    plt.savefig(folder + title, pad_inches=0)
+    plt.close(f)

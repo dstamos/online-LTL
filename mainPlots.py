@@ -4,19 +4,19 @@ from src.data_management_essex import load_data_essex_two
 from src.utilities import fisher_clip
 import numpy as np
 
-settings = {'foldername': 'results/results-second_dataset_new_data_saving_preds',
-            'seed_range': range(30),
-            'tr_pct': np.arange(0.0, 0.625, 0.025),
+settings = {'foldername': 'results-second_dataset_nmse_christoph_classic_range',
+            'seed_range': range(8),
+            'tr_pct': np.arange(0.0, 0.825, 0.025),
             'prec': '-tr_pct_{:0.4f}',
             'fitness': ['NMSE'],
-            'evaluations': ['MAE', 'NMSE', 'MSE', 'MCA', 'CD'],
+            'evaluations': ['NMSE', 'FI', 'COR'],
             'conditions': ['naive', 'itl', 'single_task', 'meta'],
             'merged': [False],
             'nFeatures': 121,
             'dataset': 2,
             'useRT': False}
 
-extra_eval = ['COR', 'NCD', 'FI', 'FIE']
+extra_eval = []
 data, weight, reg_par = read_data(settings, extra_eval, True)
 settings['evaluations'] += extra_eval
 cond_to_plot = {0: 'Naive',
@@ -25,7 +25,7 @@ cond_to_plot = {0: 'Naive',
                 3: 'Meta'}
 eval_to_plot = ['NMSE',  'FI']
 skip = 1
-ratio = [2, 3]
+ratio = [1, 2]
 title = 'SE for different Methods_skip1'
 plotError(data[0, :, :, :, :], settings, cond_to_plot, eval_to_plot, ratio, skip, title)
 
@@ -43,6 +43,8 @@ for i in range(10):
 for i in range(10):
     title = 'SE for different Subj ' + str(i)
     plotError(data[0, :, :, i*30:(i+1)*30, :], settings, cond_to_plot, eval_to_plot, ratio, skip, title,xline=[[], [fcd[i]]])
+
+plot_change_distribution(w[0])
 
 if False:
     title = 'Bias Weight - Grid'

@@ -11,14 +11,29 @@ def reconstruct(seed, dataset, useRT, settings):
     else:
         all_features, all_labels, all_experiment_names, all_correct = load_data_essex_two(useRT=useRT)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
-    return data['test_tasks_test_labels'], data['test_tasks_test_corr']
+    npred = []
+    for i in range(len(data['test_tasks_indexes'])):
+        npred.append(np.mean(data['test_tasks_tr_labels']) + np.zeros(len(data['test_tasks_test_labels'][i])))
+    return data['test_tasks_test_labels'], data['test_tasks_test_corr'], data['test_tasks_test_features'], npred
 
-def calculate_evaluation(evals, seed, dataset, useRT, settings, pred):
-    label, corr = reconstruct(seed, dataset, useRT, settings)
-    val = np.zeros((len(evals), len(pred), len(pred[0])))
-    for i in range(len(pred)):
-        for j in range(len(pred[0])):
-            val[:, i, j] = np.array(evaluation_methods(label[j], pred[i][j], corr[j], evals))
+def calculate_evaluation(evals, seed, dataset, useRT, settings, w):
+    label, corr, feat, naive = reconstruct(seed, dataset, useRT, settings)
+    val = np.zeros((len(evals), len(w), len(w[0])))
+    try:
+        for i in range(len(w)):
+                for j in range(len(w[0])):
+                    if np.sum(np.isnan(w[i][j])) > 0:
+                        if np.isnan(naive[j][0]):
+                            pred = np.random.rand(len(label[j]))
+                        else:
+                            pred = naive[j]
+                    elif w[i][j]==[]:
+                        pred = np.random.rand(len(label[j]))
+                    else:
+                        pred = np.matmul(feat[j], w[i][j][1:]) + w[i][j][0]
+                    val[:, i, j] = np.array(evaluation_methods(label[j], pred, corr[j], evals))
+    except Exception as e:
+        pass
     return np.nanmean(val, 2)
 
 # Settings a dictionary that must contain:
@@ -71,10 +86,22 @@ def read_data(settings, add_extra=[], verbose=True):
                         for i, cond in enumerate(conditions):
                             if cond == 'meta':
                                 data[mc, :beval, i, s*nSeed+seed, pc] = aux['test_performance_meta'][-1, :]
-                                pred.append(aux['all_predictions_meta'][-1])
+                                if aux['all_weight_vectors_meta'] is not None:
+                                    pred.append(aux['all_weight_vectors_meta'][-1])
+                                else:
+                                    if m:
+                                        pred.append([])
+                                    else:
+                                        pred.append([[], [], []])
+                            elif cond == 'naive':
+                                data[mc, :beval, i, s * nSeed + seed, pc] = aux['test_performance_naive']
+                                if m:
+                                    pred.append([np.nan])
+                                else:
+                                    pred.append(([[np.nan], [np.nan], [np.nan]]))
                             else:
                                 data[mc, :beval, i, s * nSeed + seed, pc] =aux['test_performance_' + cond]
-                                pred.append(aux['all_predictions_' + cond])
+                                pred.append(aux['all_weights_' + cond])
                         mdl = aux['best_model_meta']
                         w = aux['all_weight_vectors_meta']
                         if add_extra:
