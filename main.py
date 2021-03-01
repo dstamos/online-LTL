@@ -35,10 +35,14 @@ def main(settings, seed):
                'best_model_meta': best_model_meta,
                'all_weights_single_task': all_weights_single_task,
                'all_weights_itl': all_weights_itl,
+               # 'all_predictions_naive': all_predictions_naive,
+               # 'all_predictions_single_task': all_predictions_single_task,
+               # 'all_predictions_itl': all_predictions_itl,
+               # 'all_predictions_meta': all_predictions_meta,
                'settings': settings}
 
     save_results(results,
-                 foldername='results-second_dataset_nmse_christoph_classic_range/' + 'test_subject_' + str(settings['test_subject']),
+                 foldername='results-second_dataset_testing/' + 'test_subject_' + str(settings['test_subject']),
                  filename='seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(settings['test_tasks_tr_points_pct']) + '-merge_test_' + str(settings['merge_test']) + '-fitness_' + settings['val_method'][0])
 
     #print(f'{"Naive":20s} {test_performance_naive[1]:6.4f} {test_performance_naive[-1]*100:6.4f}% \n'
@@ -62,14 +66,18 @@ if __name__ == "__main__":
     os.environ['OPENBLAS_NUM_THREADS'] = '1'
     os.environ['MKL_NUM_THREADS'] = '1'
     # Parameters
-    test_subject_range = range(0, 10)
+    # test_subject_range = range(0, 10)
     test_subject_range = [9]
 
-    test_tasks_tr_split_range = np.arange(0.0, 0.625, 0.025)
+    # test_tasks_tr_split_range = np.arange(0.0, 0.825, 0.025)
     test_tasks_tr_split_range = np.array([0.025])
 
-    merge_test_range = [True]
+    # merge_test_range = [False, True]
+    merge_test_range = ['False']
+
     select_task = [False]
+
+    # fitness_metrics = ['NMSE', 'FI', 'COR']
     fitness_metrics = ['NMSE']
 
     if len(sys.argv) > 1:
@@ -78,17 +86,17 @@ if __name__ == "__main__":
         test_tasks_tr_split_range = np.array([test_tasks_tr_split_range[int(sys.argv[2])]])
         merge_test_range = [merge_test_range[int(sys.argv[3])]]
         fitness_metrics = [fitness_metrics[int(sys.argv[4])]]
-        test_subject_range = [test_subject_range[int(sys.argv[5])]]
+        # test_subject_range = [test_subject_range[int(sys.argv[5])]]
     else:
-        seed_range = [0]
-    regul_param_range = np.logspace(-12, 4, 64)
+        seed_range = [9999]
+    regul_param_range = np.logspace(-12, 4, 100)
 
     fine_tune = True  # Fine-tuning is the process of customizing the metalearning model on the test tasks. That typically includes re-training on a small number of datapoints.
 
     # Dataset split for training tasks (only training points)
-    tr_tasks_tr_points_pct = max(test_tasks_tr_split_range[0], 0.1)
+    tr_tasks_tr_points_pct = 1
 
-    val_tasks_tr_points_pct = max(test_tasks_tr_split_range[0], 0.1)
+    val_tasks_tr_points_pct = max(test_tasks_tr_split_range[0], 0.025)
     val_tasks_test_points_pct = 1 - val_tasks_tr_points_pct
     assert val_tasks_tr_points_pct + val_tasks_test_points_pct == 1, 'Percentages need to add up to 1'
 
@@ -97,7 +105,7 @@ if __name__ == "__main__":
     assert np.all(test_tasks_tr_points_pct_range + test_tasks_test_points_pct_range == 1), 'Percentages need to add up to 1'
 
     evaluation = ['NMSE', 'FI', 'COR']
-
+    tt = time.time()
     for curr_test_subject in test_subject_range:
         for merge_test in merge_test_range:
             for fitness in fitness_metrics:
@@ -120,3 +128,4 @@ if __name__ == "__main__":
                                    'merge_train': False}
                         main(options, curr_seed)
                         print('\n')
+    print(f'Total: {time.time() - tt:.2f}s')

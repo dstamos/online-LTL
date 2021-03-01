@@ -5,7 +5,7 @@ from src.utilities import multiple_tasks_evaluation
 from time import time
 from copy import deepcopy
 from src.preprocessing import PreProcess
-from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import KFold, ShuffleSplit
 
 
 def train_test_meta(data, settings, verbose=True):
@@ -129,30 +129,33 @@ class BiasLTL:
             # In this case for each task, split the given data and do cross validation. The retrain on all and return the corresponding weight vectors.
             best_regul_params = [None] * len(all_features)
             for task_idx in range(len(all_features)):
-                kf = ShuffleSplit(n_splits=1, test_size=0.3)
+                kf = ShuffleSplit(n_splits=1, test_size=0.3, random_state=999)
                 kf.get_n_splits(all_features[task_idx])
 
+                index_splits = list(kf.split(all_features[task_idx]))[0]
+                train_index, test_index = index_splits[0], index_splits[1]
+
+                x_tr, x_val = all_features[task_idx][train_index], all_features[task_idx][test_index]
+                y_tr, y_val = all_labels[task_idx][train_index], all_labels[task_idx][test_index]
+                corr_tr, corr_val = all_corr[task_idx][train_index], all_corr[task_idx][test_index]
+
+                x_tr, y_tr, _ = preprocessing.transform(x_tr, y_tr, corr_tr, fit=False, multiple_tasks=False)
+                x_val, y_val, corr_val = preprocessing.transform(x_val, y_val, corr_val, fit=False, multiple_tasks=False)
+
                 best_performance = np.Inf
-                if eval_method[0] == 'MCA' or eval_method[0] == 'CD':
-                    best_performance *= -1
+                if eval_method[0] == 'MSE' or eval_method[0] == 'MAE' or eval_method[0] == 'NMSE':
+                    best_performance = np.Inf
+                else:
+                    best_performance = -1
                 for curr_regul_param in regul_param:
                     curr_val_performances = []
-                    for train_index, test_index in kf.split(all_features[task_idx]):
-                        x_tr, x_val = all_features[task_idx][train_index], all_features[task_idx][test_index]
-                        y_tr, y_val = all_labels[task_idx][train_index], all_labels[task_idx][test_index]
-                        corr_tr, corr_val = all_corr[task_idx][train_index], all_corr[task_idx][test_index]
+                    weight_vector = self.solve_wrt_w(self.metaparameter_, x_tr, y_tr, curr_regul_param)
 
-                        x_tr, y_tr, _ = preprocessing.transform(x_tr, y_tr, corr_tr, fit=False, multiple_tasks=False)
-                        x_val, y_val, corr_val = preprocessing.transform(x_val, y_val, corr_val, fit=False, multiple_tasks=False)
-
-                        weight_vector = self.solve_wrt_w(self.metaparameter_, x_tr, y_tr, curr_regul_param)
-
-                        val_predictions = x_val @ weight_vector
-
-                        val_performance = multiple_tasks_evaluation([y_val], [[val_predictions]],
-                                                                    [corr_val],
-                                                                    eval_method)[-1]
-                        curr_val_performances.append(val_performance)
+                    val_predictions = x_val @ weight_vector
+                    val_performance = multiple_tasks_evaluation([y_val], [[val_predictions]],
+                                                                [corr_val],
+                                                                eval_method)[-1]
+                    curr_val_performances.append(val_performance)
                     if eval_method[0] == 'MSE' or eval_method[0] == 'MAE' or eval_method[0] == 'NMSE':
                         average_val_performance = np.nanmin(curr_val_performances)
                         if average_val_performance < best_performance:
@@ -163,7 +166,6 @@ class BiasLTL:
                         if average_val_performance > best_performance:
                             best_performance = average_val_performance
                             best_regul_params[task_idx] = curr_regul_param
-
 
         all_features, all_labels, all_corr = preprocessing.transform(all_features, all_labels, all_corr, fit=True, multiple_tasks=True)
 

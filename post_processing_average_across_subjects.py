@@ -9,13 +9,13 @@ import matplotlib.ticker as mtick
 font = {'size': 36}
 matplotlib.rc('font', **font)
 
-seed_range = range(20)
+seed_range = range(30)
 test_subject_range = range(10)
 merge_test = False
-evaluation_idx = 1
+evaluation_idx = 0
 tr_pct_range = np.arange(0.0, 0.625, 0.025)
 
-evaluation_names = ['MAE', 'NMSE', 'MSE', 'MCA', 'CD']
+evaluation_names = ['NMSE', 'COR', 'FI']
 
 all_errors_itl = []
 all_errors_naive = []
@@ -31,12 +31,12 @@ for test_subject_idx, test_subject in enumerate(test_subject_range):
     all_seeds_meta = np.full([len(seed_range), len(tr_pct_range)], np.nan)
     all_seeds_itl = np.full([len(seed_range), len(tr_pct_range)], np.nan)
     for seed_idx, seed in enumerate(seed_range):
-        foldername = 'results-second_dataset_new_data_saving_preds'
+        foldername = 'results-second_dataset_complete'
         foldername_with_subfolder = foldername + '/test_subject_' + str(test_subject)
 
         for tr_pct_idx, tr_pct in enumerate(tr_pct_range):
 
-            filename = './' + foldername_with_subfolder + '/' + 'seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(tr_pct)+'-merge_test_'+str(merge_test) +  '-fitness_' + evaluation_names[evaluation_idx] + '.pckl'
+            filename = './' + foldername_with_subfolder + '/' + 'seed_' + str(seed) + '-tr_pct_{:0.4f}'.format(tr_pct)+'-merge_test_'+str(merge_test) + '-fitness_' + evaluation_names[evaluation_idx] + '.pckl'
             try:
                 results = pickle.load(open(filename, "rb"))
                 test_performance_naive = results['test_performance_naive'][evaluation_idx]
@@ -93,7 +93,7 @@ ax.fill_between(x_range, average_naive - std_naive, average_naive + std_naive, a
 
 ax.xaxis.set_major_formatter(mtick.PercentFormatter())
 
-if evaluation_idx == 1:
+if evaluation_idx == 0:
     # plt.ylim(bottom=0.75, top=2.5)
     plt.ylim(bottom=0.5, top=2.5)
 plt.xlabel('training %')

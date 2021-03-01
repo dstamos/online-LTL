@@ -3,7 +3,7 @@ from scipy.linalg import lstsq
 from src.preprocessing import PreProcess
 from time import time
 from src.utilities import evaluation_methods
-from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import KFold, ShuffleSplit
 
 
 def train_test_itl(data, settings):
@@ -17,7 +17,7 @@ def train_test_itl(data, settings):
         y = data['test_tasks_tr_labels'][task_idx]
         corr = data['test_tasks_tr_corr'][task_idx]
 
-        cv_splits = 1
+        cv_splits = 5
         if len(y) < cv_splits:
             # In the case we don't enough enough data for 5-fold cross-validation for training (cold start), just use random data.
             x = np.random.randn(*np.concatenate([data['test_tasks_test_features'][task_idx] for task_idx in range(len(data['test_tasks_test_features']))]).shape)
@@ -28,9 +28,10 @@ def train_test_itl(data, settings):
         kf.get_n_splits(x)
         preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
 
-        best_performance = np.Inf
-        if settings['val_method'][0] == 'MCA' or settings['val_method'][0] == 'CD':
-            best_performance *= -1
+        if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
+            best_performance = np.Inf
+        else:
+            best_performance = -1
         best_param = None
         for regul_param in settings['regul_param_range']:
             curr_val_performances = []

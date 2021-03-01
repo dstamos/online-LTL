@@ -3,7 +3,7 @@ from scipy.linalg import lstsq
 from src.preprocessing import PreProcess
 from time import time
 from src.utilities import evaluation_methods
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, ShuffleSplit
 
 
 def train_test_single_task(data, settings):
@@ -22,13 +22,14 @@ def train_test_single_task(data, settings):
     y_merged = np.concatenate(labels_to_be_merged)
     corr_merged = np.concatenate(corr_to_be_merged)
 
-    kf = KFold(n_splits=5)
+    kf = ShuffleSplit(n_splits=1, test_size=0.3)
     kf.get_n_splits(x_merged)
     preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
 
-    best_performance = np.Inf
-    if settings['val_method'][0] == 'MCA' or settings['val_method'][0] == 'CD':
-        best_performance *= -1
+    if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
+        best_performance = np.Inf
+    else:
+        best_performance = -1
     best_param = None
     for regul_param in settings['regul_param_range']:
         curr_val_performances = []
