@@ -55,7 +55,7 @@ def parallel_calc(subj):
                 for test_tasks_tr_points_pct in test_tasks_tr_split_range:
                     print(f'test subject: {subj:2d} | merge_test: {merge_test} | fitness: {fitness:5s}'
                           f'| seed: {curr_seed:4d} | tr_pct: {test_tasks_tr_points_pct:5.3f}')
-                    settings = {'regul_param_range': np.logspace(-12, 4, 36),
+                    settings = {'regul_param_range': np.logspace(-12, 4, 100),
                                'test_subject': subj,
                                'fine_tune': True,
                                'tr_tasks_tr_points_pct': 1,

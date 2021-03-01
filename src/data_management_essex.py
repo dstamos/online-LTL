@@ -167,6 +167,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     tasks_indexes = [i for i in tasks_indexes if i not in validation_tasks_indexes]
     training_tasks_indexes = tasks_indexes
 
+
     # Training tasks (only training data)
     tr_tasks_tr_features = []
     tr_tasks_tr_labels = []
