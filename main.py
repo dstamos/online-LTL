@@ -73,7 +73,7 @@ if __name__ == "__main__":
     test_tasks_tr_split_range = np.array([0.025])
 
     # merge_test_range = [False, True]
-    merge_test_range = ['False']
+    merge_test_range = [False]
 
     select_task = [False]
 
