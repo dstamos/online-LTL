@@ -1,3 +1,4 @@
+import warnings
 from scipy.linalg import lstsq
 import numpy as np
 from numpy.linalg.linalg import norm
@@ -162,7 +163,9 @@ class BiasLTL:
                             best_performance = average_val_performance
                             best_regul_params[task_idx] = curr_regul_param
                     else:
-                        average_val_performance = np.nanmax(curr_val_performances)
+                        with warnings.catch_warnings():
+                            warnings.filterwarnings('ignore')
+                            average_val_performance = np.nanmax(curr_val_performances)
                         if average_val_performance > best_performance:
                             best_performance = average_val_performance
                             best_regul_params[task_idx] = curr_regul_param

@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from scipy.linalg import lstsq
 from src.preprocessing import PreProcess
@@ -49,7 +50,9 @@ def train_test_itl(data, settings):
                 val_predictions = model_itl.predict(x_val)
                 val_performance = evaluation_methods(y_val, val_predictions, corr_val, settings['val_method'])[0]
                 curr_val_performances.append(val_performance)
-            average_val_performance = np.nanmean(curr_val_performances)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore')
+                average_val_performance = np.nanmean(curr_val_performances)
             if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
                 if average_val_performance < best_performance:
                     best_performance = average_val_performance
