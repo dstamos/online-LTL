@@ -46,7 +46,7 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True, exclude=[7]):
 def load_data_essex_two(useRT=True):
 
     l = np.load('./data/confidence_Chris.npy', allow_pickle=True)
-    f = np.load('./data/features_Chris_small.npy', allow_pickle=True)
+    f = np.load('./data/features_Chris.npy', allow_pickle=True)
     c = np.load('./data/correctness_Chris.npy', allow_pickle=True)
     features = [i for i in f]
 
