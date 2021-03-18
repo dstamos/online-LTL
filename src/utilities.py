@@ -69,7 +69,11 @@ def mse_clip(labels, predictions):
 
 def nmse_clip(labels, predictions):
     predictions = np.clip(predictions, 0.0, 1)
-    mse = mean_squared_error(labels, predictions)
+    try:
+        mse = mean_squared_error(labels, predictions)
+    except:
+        mse = 10**10
+        return mse
     if len(np.unique(labels)) == 1:
         return mse
     nmse = mse / mean_squared_error(labels.ravel(), np.mean(labels.ravel()) * np.ones(len(labels)))

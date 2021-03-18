@@ -24,7 +24,7 @@ def train_test_single_task(data, settings):
 
     kf = ShuffleSplit(n_splits=1, test_size=0.3)
     kf.get_n_splits(x_merged)
-    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
+    preprocessing = PreProcess(threshold_scaling=True, standard_scaling=False, inside_ball_scaling=False, add_bias=True)
 
     if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
         best_performance = np.Inf

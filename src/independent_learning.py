@@ -25,9 +25,10 @@ def train_test_itl(data, settings):
             y = np.random.uniform(0, 1, len(x))
             corr = np.random.randint(0, 2, len(x))
 
-        kf = ShuffleSplit(n_splits=1, test_size=0.3)
+        # kf = ShuffleSplit(n_splits=1, test_size=0.3)
+        kf = KFold(n_splits=3)
         kf.get_n_splits(x)
-        preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
+        preprocessing = PreProcess(threshold_scaling=True, standard_scaling=False, inside_ball_scaling=False, add_bias=True)
 
         if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
             best_performance = np.Inf
