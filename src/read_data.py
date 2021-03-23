@@ -13,7 +13,7 @@ def reconstruct(seed, dataset, useRT, settings):
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
     npred = []
     for i in range(len(data['test_tasks_indexes'])):
-        npred.append(np.mean(data['test_tasks_tr_labels']) + np.zeros(len(data['test_tasks_test_labels'][i])))
+        npred.append(np.mean(data['test_tasks_tr_labels'][i]) + np.zeros(len(data['test_tasks_test_labels'][i])))
     return data['test_tasks_test_labels'], data['test_tasks_test_corr'], data['test_tasks_test_features'], npred
 
 def calculate_evaluation(evals, seed, dataset, useRT, settings, w):
@@ -35,6 +35,29 @@ def calculate_evaluation(evals, seed, dataset, useRT, settings, w):
     except Exception as e:
         pass
     return np.nanmean(val, 2)
+
+
+def calculate_importance(seed, dataset, useRT, settings, w):
+    _, _, feat, _ = reconstruct(seed, dataset, useRT, settings)
+    importance = np.zeros((len(w), 7))
+    try:
+        for i in range(len(w)):
+            temp_imp = np.zeros((len(w[0]), 7))
+            for j in range(len(w[0])):
+                temp_pred = np.zeros((len(feat[j]), 7))
+                if w[i][j]==[]:
+                    temp_pred[:] = 0
+                else:
+                    for k in range(6):
+                        temp_pred[:, k] = np.matmul(feat[j][:, k*20:(k+1)*20], w[i][j][k*20+1:(k+1)*20+1])
+                    temp_pred[:, 6] = w[i][j][0]
+                    temp_pred = np.abs(temp_pred)
+                    temp_pred = temp_pred / np.sum(temp_pred, 1, keepdims=True)
+                temp_imp[j] = np.mean(temp_pred, 0)
+            importance[i] = np.mean(temp_imp, 0)
+    except Exception as e:
+        pass
+    return importance
 
 # Settings a dictionary that must contain:
 # foldername: str
@@ -64,12 +87,16 @@ def read_data(settings, add_extra=[], verbose=True):
     nSubj = len(subjFolder)
     nSeed = len(seed_range)
     metaLen = (nSubj-2)*3
+    notNaive = np.sum([i != 'naive' for i in conditions])
 
     beval = len(evaluations)
     bevalex = len(add_extra)
 
+
     data = np.zeros((len(merged), beval+bevalex, len(conditions), nSubj*nSeed, nPoints))
-    weight = np.zeros((len(merged), nSubj*nSeed, metaLen, nFeatures, nPoints))
+    ltl_w = np.zeros((len(merged), nSubj*nSeed, metaLen, nFeatures, nPoints))
+    weight = np.zeros((len(merged), notNaive, nSubj*nSeed, nFeatures, nPoints))
+    importance = np.zeros((len(merged), notNaive, nSubj*nSeed, 7, nPoints))
     reg_par = np.zeros((len(merged), nSubj*nSeed, nPoints))
 
     for s in range(nSubj):
@@ -83,16 +110,28 @@ def read_data(settings, add_extra=[], verbose=True):
                         aux = pickle.load(f)
                         f.close()
                         pred = []
+                        imp_pred = []
+                        cc = 0
                         for i, cond in enumerate(conditions):
                             if cond == 'meta':
                                 data[mc, :beval, i, s*nSeed+seed, pc] = aux['test_performance_meta'][-1, :]
                                 if aux['all_weight_vectors_meta'] is not None:
-                                    pred.append(aux['all_weight_vectors_meta'][-1])
+                                    w = aux['all_weight_vectors_meta'][-1]
+                                    pred.append(w)
+                                    imp_pred.append(w)
+                                    if len(w) == 1:
+                                        w = np.abs(w[0])
+                                    else:
+                                        w = np.mean(np.abs(np.array(w)), 0)
+                                    weight[mc, cc, s * nSeed + seed, :, pc] = w / np.nansum(w, 0, keepdims=True)
                                 else:
                                     if m:
                                         pred.append([])
+                                        imp_pred.append([])
                                     else:
                                         pred.append([[], [], []])
+                                        imp_pred.append([[], [], []])
+                                cc += 1
                             elif cond == 'naive':
                                 data[mc, :beval, i, s * nSeed + seed, pc] = aux['test_performance_naive']
                                 if m:
@@ -101,17 +140,27 @@ def read_data(settings, add_extra=[], verbose=True):
                                     pred.append(([[np.nan], [np.nan], [np.nan]]))
                             else:
                                 data[mc, :beval, i, s * nSeed + seed, pc] =aux['test_performance_' + cond]
-                                pred.append(aux['all_weights_' + cond])
-                        mdl = aux['best_model_meta']
+                                w = aux['all_weights_' + cond]
+                                pred.append(w)
+                                imp_pred.append(w)
+                                if len(w) == 1:
+                                    w = np.abs(w[0])
+                                else:
+                                    w = np.mean(np.abs(np.array(w)), 0)
+                                weight[mc, cc, s * nSeed + seed, :, pc] = w / np.nansum(w, 0, keepdims=True)
+                                cc += 1
                         w = aux['all_weight_vectors_meta']
+                        importance[mc, :, s * nSeed + seed, :, pc] = calculate_importance(seed, dataset, useRT, aux['settings'], imp_pred)
                         if add_extra:
                             temp = calculate_evaluation(add_extra, seed, dataset, useRT, aux['settings'], pred)
                             data[mc, beval:, :, s * nSeed + seed, pc] = temp
                         if not np.any(w==None):
-                            w = np.mean(np.abs(np.array(w)), 1)
-                            weight[mc, s * nSeed + seed, :, :, pc] = w / np.nansum(w, 1, keepdims=True)
-                        reg_par[mc, s * nSeed + seed, pc] = mdl.regularization_parameter
+                            if len(w[0]) == 1:
+                                w = np.abs(np.array(w)).squeeze()
+                            else:
+                                w = np.mean(np.abs(np.array(w)), 1)
+                            ltl_w[mc, s * nSeed + seed, :, :, pc] = w / np.nansum(w, 1, keepdims=True)
                     except Exception as e:
                         if verbose:
                             print(e, s, m, p, seed)
-    return data, weight, reg_par
+    return data, ltl_w, weight, importance
