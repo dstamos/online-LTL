@@ -69,7 +69,11 @@ def mse_clip(labels, predictions):
 
 def nmse_clip(labels, predictions):
     predictions = np.clip(predictions, 0.0, 1)
-    mse = mean_squared_error(labels, predictions)
+    try:
+        mse = mean_squared_error(labels, predictions)
+    except:
+        mse = 10**10
+        return mse
     if len(np.unique(labels)) == 1:
         return mse
     nmse = mse / mean_squared_error(labels.ravel(), np.mean(labels.ravel()) * np.ones(len(labels)))
@@ -125,26 +129,27 @@ def fisher_clip_equal(predictions, corr):
         return 0
     return (np.mean(pred[corr])**2 - np.mean(pred[~corr])**2) / (np.var(pred[corr]) + np.var(pred[~corr]))
 
-def evaluation_methods(labels, predictions, correct, method):
+def evaluation_methods(labels, predictions, correct, methods):
     res = []
-    if 'MAE' in method:
-        res.append(mae_clip(labels, predictions))
-    if 'NMSE' in method:
-        res.append(nmse_clip(labels, predictions))
-    if 'MSE' in method:
-        res.append(mse_clip(labels, predictions))
-    if 'MCA' in method:
-        res.append(mca_clip(predictions, correct))
-    if 'CD' in method:
-        res.append(cd_clip(predictions, correct))
-    if 'COR' in method:
-        res.append(correlation_clip(labels, predictions))
-    if 'NCD' in method:
-        res.append(ncd_clip(predictions, correct))
-    if 'FI' in method:
-        res.append(fisher_clip(predictions, correct))
-    if 'FIE' in method:
-        res.append(fisher_clip_equal(predictions, correct))
+    for method in methods:
+        if 'MAE' == method:
+            res.append(mae_clip(labels, predictions))
+        elif 'NMSE' == method:
+            res.append(nmse_clip(labels, predictions))
+        elif 'MSE' == method:
+            res.append(mse_clip(labels, predictions))
+        elif 'MCA' == method:
+            res.append(mca_clip(predictions, correct))
+        elif 'CD' == method:
+            res.append(cd_clip(predictions, correct))
+        elif 'COR' == method:
+            res.append(correlation_clip(labels, predictions))
+        elif 'NCD' == method:
+            res.append(ncd_clip(predictions, correct))
+        elif 'FI' == method:
+            res.append(fisher_clip(predictions, correct))
+        elif 'FIE' == method:
+            res.append(fisher_clip_equal(predictions, correct))
     return res
 
 

@@ -1,10 +1,10 @@
 import mat73
 import numpy as np
-temp_features = mat73.loadmat('./data/RTfeaturessmall singlefilter.mat')
+temp_features = mat73.loadmat('./data/RTfeatures.mat')
 features = temp_features.get("features")
 features = np.delete(features, np.where(np.nanmean(features, 0) == 0), axis=1)
-temp_labels = mat73.loadmat('./data/labels_Chris.mat')
-labels = temp_labels.get("savelabel")
+temp_labels = mat73.loadmat('./data/labels.mat')
+labels = temp_labels.get("labels")
 
 session = 864
 features_Chris_large = []
@@ -31,4 +31,4 @@ for task_idx in range(30):
 
 np.save('./data/confidence_Chris.npy', confidence_Chris, allow_pickle=True)
 np.save('./data/correctness_Chris.npy', correctness_Chris, allow_pickle=True)
-np.save('./data/features_Chris_small_method2.npy', features_Chris_large, allow_pickle=True)
+np.save('./data/features_Chris.npy', features_Chris_large, allow_pickle=True)

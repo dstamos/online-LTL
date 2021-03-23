@@ -49,8 +49,29 @@ def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, fo
         plt.ylabel(ev)
     plt.suptitle(title)
     plt.legend(frameon=False)
-    plt.savefig(folder+title, pad_inches=0)
+    plt.savefig(folder+title+'.png', pad_inches=0)
     plt.close(f)
+
+def plotWeight(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, folder='analysis/', ylim=[], xline=[]):
+    colors = ['tab:red', 'tab:green', 'tab:blue']
+    f = plt.figure(figsize=figsize, dpi=dpi)
+    for c, ev in enumerate(eval_to_plot):
+        plt.subplot(ratio[0], ratio[1], c + 1)
+        for ind, nam in cond_to_plot.items():
+            plotSE(data[ind, :, c, skip:], settings['tr_pct'][skip:], colors[ind], nam)
+        xlim = [settings['tr_pct'][skip:][0], settings['tr_pct'][-1]]
+        plt.xlim(xlim)
+        if ylim:
+            plt.ylim(ylim[c])
+        if xline:
+            if xline[c]:
+                plt.plot([xlim[0], xlim[1]], [xline[c], xline[c]], '--k', label='Ground Truth')
+        plt.title(ev)
+    plt.suptitle(title)
+    plt.legend(frameon=False)
+    plt.savefig(folder + title + '.png', pad_inches=0)
+    plt.close(f)
+
 
 def plotGrid(w, pct_steps, title, ratio=[1, 1], folder='analysis/'):
     metalen = w.shape[-2]
@@ -115,15 +136,20 @@ def plot_topo_gif(w, folder='analysis/TopoGif/', name='all_subj_Scalp'):
         images.append(imageio.imread(f))
     imageio.mimsave(folder+name+'.gif', images)
 
-def plot_change_distribution(w, folder='analysis/', title = 'all_subj_change_distribution'):
+def plot_change_distribution(w, settings, folder='analysis/', title = 'all_subj_change_distribution',clip=[0, 1]):
     nseed = w.shape[0]
     nsteps = w.shape[-1]
     res = np.empty((nseed, nsteps))
     for i in range(nseed):
         for j in range(nsteps):
-            res[i, j] = np.linalg.norm(w[i, 1, :, j] - w[i, -1, :, j])
+            res[i, j] = np.mean(np.sqrt((w[i, 0, :, j] - w[i, -1, :, j]) ** 2) / w[i, 0, :, j])
+    res = np.clip(res,clip[0], clip[1])
     f = plt.figure(figsize=figsize, dpi=dpi)
-    plt.matshow(res, 0)
+    plt.matshow(res, 0, aspect='auto')
+
+    xticks = settings['tr_pct'][1::5]
+    step = np.arange(0, nsteps, 5 )
+    plt.xticks(step, xticks,rotation=45)
     plt.xlabel('Target %')
     plt.ylabel('Seeds')
     plt.colorbar()

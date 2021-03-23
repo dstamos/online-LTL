@@ -46,7 +46,7 @@ def load_data_essex_one(delete0=True, useStim=True, useRT=True, exclude=[7]):
 def load_data_essex_two(useRT=True):
 
     l = np.load('./data/confidence_Chris.npy', allow_pickle=True)
-    f = np.load('./data/features_Chris_small.npy', allow_pickle=True)
+    f = np.load('./data/features_Chris.npy', allow_pickle=True)
     c = np.load('./data/correctness_Chris.npy', allow_pickle=True)
     features = [i for i in f]
 
@@ -94,8 +94,6 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     test_subjects = [settings['test_subject']]
 
     tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
-    val_tasks_tr_points_pct = settings['val_tasks_tr_points_pct']
-    test_tasks_tr_points_pct = settings['test_tasks_tr_points_pct']
 
     test_tasks_indexes = []
     for test_subject in test_subjects:
@@ -113,78 +111,42 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     test_tasks_test_features = []
     test_tasks_test_labels = []
     test_tasks_test_corr = []
-    if settings['merge_test']:
-        x = np.zeros((0, all_features[0].shape[1]))
-        y = np.zeros(0)
-        corr = np.zeros(0, bool)
-        for task_index in test_tasks_indexes:
-            x = np.concatenate((x, all_features[task_index]), 0)
-            y = np.concatenate((y, all_labels[task_index]), 0)
-            corr = np.concatenate((corr, all_corr[task_index]), 0)
-        test_tasks_indexes = [0]  # There is only one training task
-        n_all_points = len(y)
-        n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
 
-        training_features = x[:n_tr_points, :]
-        training_labels = y[:n_tr_points]
-        training_corr = corr[:n_tr_points]
-        test_features = x[n_tr_points:, :]
-        test_labels = y[n_tr_points:]
-        test_corr = corr[n_tr_points:]
-
-        test_tasks_tr_features.append(training_features)
-        test_tasks_tr_labels.append(training_labels)
-        test_tasks_tr_corr.append(training_corr)
-        test_tasks_test_features.append(test_features)
-        test_tasks_test_labels.append(test_labels)
-        if all_corr:
-            test_tasks_test_corr.append(test_corr)
+    if tr_tasks_tr_points_pct == 1:
+        training_features = all_features[test_tasks_indexes[0]]
+        training_labels = all_labels[test_tasks_indexes[0]]
+        training_corr = all_corr[test_tasks_indexes[0]]
     else:
-        for task_index in test_tasks_indexes:
-            x = all_features[task_index]
-            y = all_labels[task_index]
-            corr = all_corr[task_index]
-            n_all_points = len(y)
-            n_tr_points = int(test_tasks_tr_points_pct * n_all_points)
+        training_features = np.concatenate(all_features[test_tasks_indexes[:2]])
+        training_labels = np.concatenate(all_labels[test_tasks_indexes[:2]])
+        training_corr = np.concatenate(all_corr[test_tasks_indexes[:2]])
+    test_features = all_features[test_tasks_indexes[-1]]
+    test_labels = all_labels[test_tasks_indexes[-1]]
+    test_corr = all_corr[test_tasks_indexes[-1]]
+    test_tasks_indexes = [0]
 
-            training_features = x[:n_tr_points, :]
-            training_labels = y[:n_tr_points]
-            training_corr = corr[:n_tr_points]
-            test_features = x[n_tr_points:, :]
-            test_labels = y[n_tr_points:]
-            test_corr = corr[n_tr_points:]
+    test_tasks_tr_features.append(training_features)
+    test_tasks_tr_labels.append(training_labels)
+    test_tasks_tr_corr.append(training_corr)
+    test_tasks_test_features.append(test_features)
+    test_tasks_test_labels.append(test_labels)
+    test_tasks_test_corr.append(test_corr)
 
-            test_tasks_tr_features.append(training_features)
-            test_tasks_tr_labels.append(training_labels)
-            test_tasks_tr_corr.append(training_corr)
-            test_tasks_test_features.append(test_features)
-            test_tasks_test_labels.append(test_labels)
-            test_tasks_test_corr.append(test_corr)
+    # Validation tasks are picked randomly (not from the same person)
 
-    # Validation tasks are picked based on the seed
     aval_subj = np.unique(np.array(tasks_indexes) // 3)
     validation_tasks_indexes = aval_subj[settings['seed']] * n_experiments_per_subject + np.arange(0, 3)
     tasks_indexes = [i for i in tasks_indexes if i not in validation_tasks_indexes]
     training_tasks_indexes = tasks_indexes
-
 
     # Training tasks (only training data)
     tr_tasks_tr_features = []
     tr_tasks_tr_labels = []
     tr_tasks_tr_corr = []
     for counter, task_index in enumerate(training_tasks_indexes):
-        x = all_features[task_index]
-        y = all_labels[task_index]
-        corr = all_corr[task_index]
-        n_all_points = len(y)
-        n_tr_points = int(tr_tasks_tr_points_pct * n_all_points)
-        training_features = x[:n_tr_points, :]
-        training_labels = y[:n_tr_points]
-        training_corr = corr[:n_tr_points]
-
-        tr_tasks_tr_features.append(training_features)
-        tr_tasks_tr_labels.append(training_labels)
-        tr_tasks_tr_corr.append(training_corr)
+        tr_tasks_tr_features.append(all_features[task_index])
+        tr_tasks_tr_labels.append(all_labels[task_index])
+        tr_tasks_tr_corr.append(all_corr[task_index])
 
         if verbose is True:
             print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d}')
@@ -196,81 +158,48 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     val_tasks_test_features = []
     val_tasks_test_labels = []
     val_tasks_test_corr = []
-    if settings['merge_test']:
-        x = np.zeros((0, all_features[0].shape[1]))
-        y = np.zeros(0)
-        corr = np.zeros(0, bool)
-        for task_index in validation_tasks_indexes:
-            x = np.concatenate((x, all_features[task_index]), 0)
-            y = np.concatenate((y, all_labels[task_index]), 0)
-            corr = np.concatenate((corr, all_corr[task_index]), 0)
-        validation_tasks_indexes = [0]  # There is only one training task
-        n_all_points = len(y)
-        n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
 
-        training_features = x[:n_tr_points, :]
-        training_labels = y[:n_tr_points]
-        training_corr = corr[:n_tr_points]
-        test_features = x[n_tr_points:, :]
-        test_labels = y[n_tr_points:]
-        test_corr = corr[n_tr_points:]
-
-        val_tasks_tr_features.append(training_features)
-        val_tasks_tr_labels.append(training_labels)
-        val_tasks_tr_corr.append(training_corr)
-        val_tasks_test_features.append(test_features)
-        val_tasks_test_labels.append(test_labels)
-        val_tasks_test_corr.append(test_corr)
+    if tr_tasks_tr_points_pct == 1:
+        training_features = all_features[validation_tasks_indexes[0]]
+        training_labels = all_labels[validation_tasks_indexes[0]]
+        training_corr = all_corr[validation_tasks_indexes[0]]
     else:
-        for counter, task_index in enumerate(validation_tasks_indexes):
-            x = all_features[task_index]
-            y = all_labels[task_index]
-            corr = all_corr[task_index]
-            n_all_points = len(y)
-            n_tr_points = int(val_tasks_tr_points_pct * n_all_points)
+        training_features = np.concatenate(all_features[validation_tasks_indexes[:2]])
+        training_labels = np.concatenate(all_labels[validation_tasks_indexes[:2]])
+        training_corr = np.concatenate(all_corr[validation_tasks_indexes[:2]])
+    test_features = all_features[validation_tasks_indexes[-1]]
+    test_labels = all_labels[validation_tasks_indexes[-1]]
+    test_corr = all_corr[validation_tasks_indexes[-1]]
+    validation_tasks_indexes = [0]
 
-            training_features = x[:n_tr_points, :]
-            training_labels = y[:n_tr_points]
-            training_corr = corr[:n_tr_points]
-            test_features = x[n_tr_points:, :]
-            test_labels = y[n_tr_points:]
-            test_corr = corr[n_tr_points:]
+    val_tasks_tr_features.append(training_features)
+    val_tasks_tr_labels.append(training_labels)
+    val_tasks_tr_corr.append(training_corr)
+    val_tasks_test_features.append(test_features)
+    val_tasks_test_labels.append(test_labels)
+    val_tasks_test_corr.append(test_corr)
 
-            val_tasks_tr_features.append(training_features)
-            val_tasks_tr_labels.append(training_labels)
-            val_tasks_tr_corr.append(training_corr)
-            val_tasks_test_features.append(test_features)
-            val_tasks_test_labels.append(test_labels)
-            val_tasks_test_corr.append(test_corr)
-
-            if verbose is True:
-                print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
-
-
-
-            if verbose is True:
-                print(f'task: {all_experiment_names[task_index]:s} ({task_index:2d}) | points: {n_all_points:4d} | tr: {n_tr_points:4d} | test: {n_all_points - n_tr_points:4d}')
     data = {'training_tasks_indexes': training_tasks_indexes,
-            'validation_tasks_indexes': validation_tasks_indexes,
-            'test_tasks_indexes': test_tasks_indexes,
-            # Training tasks
-            'tr_tasks_tr_features': tr_tasks_tr_features,
-            'tr_tasks_tr_labels': tr_tasks_tr_labels,
-            'tr_tasks_tr_corr': tr_tasks_tr_corr,
-            # Validation tasks
-            'val_tasks_tr_features': val_tasks_tr_features,
-            'val_tasks_tr_labels': val_tasks_tr_labels,
-            'val_tasks_tr_corr': val_tasks_tr_corr,
-            'val_tasks_test_features': val_tasks_test_features,
-            'val_tasks_test_labels': val_tasks_test_labels,
-            'val_tasks_test_corr': val_tasks_test_corr,
-            # Test tasks
-            'test_tasks_tr_features': test_tasks_tr_features,
-            'test_tasks_tr_labels': test_tasks_tr_labels,
-            'test_tasks_tr_corr': test_tasks_tr_corr,
-            'test_tasks_test_features': test_tasks_test_features,
-            'test_tasks_test_labels': test_tasks_test_labels,
-            'test_tasks_test_corr': test_tasks_test_corr}
+        'validation_tasks_indexes': validation_tasks_indexes,
+        'test_tasks_indexes': test_tasks_indexes,
+        # Training tasks
+        'tr_tasks_tr_features': tr_tasks_tr_features,
+        'tr_tasks_tr_labels': tr_tasks_tr_labels,
+        'tr_tasks_tr_corr': tr_tasks_tr_corr,
+        # Validation tasks
+        'val_tasks_tr_features': val_tasks_tr_features,
+        'val_tasks_tr_labels': val_tasks_tr_labels,
+        'val_tasks_tr_corr': val_tasks_tr_corr,
+        'val_tasks_test_features': val_tasks_test_features,
+        'val_tasks_test_labels': val_tasks_test_labels,
+        'val_tasks_test_corr': val_tasks_test_corr,
+        # Test tasks
+        'test_tasks_tr_features': test_tasks_tr_features,
+        'test_tasks_tr_labels': test_tasks_tr_labels,
+        'test_tasks_tr_corr': test_tasks_tr_corr,
+        'test_tasks_test_features': test_tasks_test_features,
+        'test_tasks_test_labels': test_tasks_test_labels,
+        'test_tasks_test_corr': test_tasks_test_corr}
     return data
 
 

@@ -1,9 +1,10 @@
+import warnings
 import numpy as np
 from scipy.linalg import lstsq
 from src.preprocessing import PreProcess
 from time import time
 from src.utilities import evaluation_methods
-from sklearn.model_selection import ShuffleSplit
+from sklearn.model_selection import KFold, ShuffleSplit
 
 
 def train_test_itl(data, settings):
@@ -17,20 +18,22 @@ def train_test_itl(data, settings):
         y = data['test_tasks_tr_labels'][task_idx]
         corr = data['test_tasks_tr_corr'][task_idx]
 
-        cv_splits = 1
+        cv_splits = 5
         if len(y) < cv_splits:
             # In the case we don't enough enough data for 5-fold cross-validation for training (cold start), just use random data.
             x = np.random.randn(*np.concatenate([data['test_tasks_test_features'][task_idx] for task_idx in range(len(data['test_tasks_test_features']))]).shape)
             y = np.random.uniform(0, 1, len(x))
             corr = np.random.randint(0, 2, len(x))
 
-        kf = ShuffleSplit(n_splits=1, test_size=0.3)
+        # kf = ShuffleSplit(n_splits=1, test_size=0.3)
+        kf = KFold(n_splits=3)
         kf.get_n_splits(x)
-        preprocessing = PreProcess(threshold_scaling=True, standard_scaling=True, inside_ball_scaling=False, add_bias=True)
+        preprocessing = PreProcess(threshold_scaling=True, standard_scaling=False, inside_ball_scaling=False, add_bias=True)
 
-        best_performance = np.Inf
-        if settings['val_method'][0] == 'MCA' or settings['val_method'][0] == 'CD':
-            best_performance *= -1
+        if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
+            best_performance = np.Inf
+        else:
+            best_performance = -1
         best_param = None
         for regul_param in settings['regul_param_range']:
             curr_val_performances = []
@@ -48,7 +51,9 @@ def train_test_itl(data, settings):
                 val_predictions = model_itl.predict(x_val)
                 val_performance = evaluation_methods(y_val, val_predictions, corr_val, settings['val_method'])[0]
                 curr_val_performances.append(val_performance)
-            average_val_performance = np.nanmean(curr_val_performances)
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore')
+                average_val_performance = np.nanmean(curr_val_performances)
             if settings['val_method'][0] == 'MSE' or settings['val_method'][0] == 'MAE' or settings['val_method'][0] == 'NMSE':
                 if average_val_performance < best_performance:
                     best_performance = average_val_performance

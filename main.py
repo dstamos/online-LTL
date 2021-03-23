@@ -16,7 +16,6 @@ def main(settings):
     all_features, all_labels, all_experiment_names, all_correct = load_data_essex_two(useRT=False)
     data = split_data_essex(all_features, all_labels, all_experiment_names, settings, verbose=False, all_corr=all_correct)
 
-
     test_performance_naive, all_predictions_naive = train_test_naive(data, settings)
     test_performance_single_task, all_predictions_single_task, all_weights_single_task = train_test_single_task(data, settings)
     test_performance_itl, all_predictions_itl, all_weights_itl = train_test_itl(data, settings)
@@ -33,7 +32,7 @@ def main(settings):
                'settings': settings}
 
     save_results(results,
-                 foldername='results-second_dataset_nmse_christoph_classic_range/' + 'test_subject_' + str(settings['test_subject']),
+                 foldername='merged_results/' + 'test_subject_' + str(settings['test_subject']),
                  filename='seed_' + str(settings['seed']) + '-tr_pct_{:0.4f}'.format(settings['test_tasks_tr_points_pct']) + '-merge_test_' + str(settings['merge_test']) + '-fitness_' + settings['val_method'][0])
 
     #print(f'{"Naive":20s} {test_performance_naive[1]:6.4f} {test_performance_naive[-1]*100:6.4f}% \n'
@@ -44,7 +43,7 @@ def main(settings):
 
 
 def parallel_calc(subj):
-    test_tasks_tr_split_range = np.arange(0.0, 0.825, 0.025)
+    test_tasks_tr_split_range = np.arange(1,3)
     merge_test_range = [True]
     fitness_metrics = ['NMSE']
     seed_range = np.arange(8)
@@ -58,10 +57,8 @@ def parallel_calc(subj):
                     settings = {'regul_param_range': np.logspace(-12, 4, 100),
                                'test_subject': subj,
                                'fine_tune': True,
-                               'tr_tasks_tr_points_pct': 1,
-                               'val_tasks_tr_points_pct': test_tasks_tr_points_pct,
                                'test_tasks_tr_points_pct': test_tasks_tr_points_pct,
-                               'evaluation': ['NMSE', 'FI', 'COR'],
+                               'evaluation': ['NMSE', 'COR', 'FI'],
                                'val_method': [fitness],
                                'merge_test': merge_test,
                                'seed': curr_seed,
