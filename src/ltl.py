@@ -189,6 +189,12 @@ class BiasLTL:
             all_predictions.append(curr_predictions)
         return all_predictions
 
+    def matmul(self, a, b):
+        c = np.empty((a.shape[0], b.shape[1]))
+        for i in range(a.shape[0]):
+            c[i] = a[i] @ b
+        return c
+
     def solve_wrt_metaparameter(self, h, x, y, curr_iteration=0, inner_iter_cap=10):
         step_size_bit = 1e+3
         n = len(y)
@@ -198,7 +204,7 @@ class BiasLTL:
 
         def grad(curr_h):
             try:
-                grad_h = x_n_hat.T @ (x_n_hat @ curr_h - y_n_hat)
+                grad_h = self.matmul(x_n_hat.T, (x_n_hat @ curr_h - y_n_hat))
             except:
                 grad_h = np.zeros(len(curr_h))
             return grad_h

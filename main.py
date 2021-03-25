@@ -43,27 +43,21 @@ def main(settings):
 
 
 def parallel_calc(subj):
-    test_tasks_tr_split_range = np.arange(1,3)
-    merge_test_range = [True]
-    fitness_metrics = ['NMSE']
-    seed_range = np.arange(8)
+    days = [2, 1]
+    seed_range = np.arange(9)
 
-    for merge_test in merge_test_range:
-        for fitness in fitness_metrics:
-            for curr_seed in seed_range:
-                for test_tasks_tr_points_pct in test_tasks_tr_split_range:
-                    print(f'test subject: {subj:2d} | merge_test: {merge_test} | fitness: {fitness:5s}'
-                          f'| seed: {curr_seed:4d} | tr_pct: {test_tasks_tr_points_pct:5.3f}')
-                    settings = {'regul_param_range': np.logspace(-12, 4, 100),
-                               'test_subject': subj,
-                               'fine_tune': True,
-                               'test_tasks_tr_points_pct': test_tasks_tr_points_pct,
-                               'evaluation': ['NMSE', 'COR', 'FI'],
-                               'val_method': [fitness],
-                               'merge_test': merge_test,
-                               'seed': curr_seed,
-                               'merge_train': False}
-                    main(settings)
+    for curr_seed in seed_range:
+        for day in days:
+            print(f'test subject: {subj:2d} | seed: {curr_seed:4d} | tr_pct: {day:5.0f}')
+            settings = {'regul_param_range': np.logspace(-12, 4, 100),
+                       'test_subject': subj,
+                       'fine_tune': True,
+                       'test_tasks_tr_points_pct': day,
+                       'evaluation': ['NMSE', 'COR', 'FI'],
+                       'val_method': ['NMSE'],
+                       'merge_test': True,
+                       'seed': curr_seed}
+            main(settings)
 
 if __name__ == "__main__":
     os.environ['OPENBLAS_NUM_THREADS'] = '1'

@@ -97,7 +97,6 @@ def read_data(settings, add_extra=[], verbose=True):
     ltl_w = np.zeros((len(merged), nSubj*nSeed, metaLen, nFeatures, nPoints))
     weight = np.zeros((len(merged), notNaive, nSubj*nSeed, nFeatures, nPoints))
     importance = np.zeros((len(merged), notNaive, nSubj*nSeed, 7, nPoints))
-    reg_par = np.zeros((len(merged), nSubj*nSeed, nPoints))
 
     for s in range(nSubj):
         for mc, m in enumerate(merged):

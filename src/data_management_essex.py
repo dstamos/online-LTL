@@ -93,7 +93,7 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     n_all_subjects = len(all_features) // n_experiments_per_subject  # Hardcoded - the assumption is that all subjects had 3 days of experiments
     test_subjects = [settings['test_subject']]
 
-    tr_tasks_tr_points_pct = settings['tr_tasks_tr_points_pct']
+    days = settings['test_tasks_tr_points_pct']
 
     test_tasks_indexes = []
     for test_subject in test_subjects:
@@ -112,14 +112,14 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     test_tasks_test_labels = []
     test_tasks_test_corr = []
 
-    if tr_tasks_tr_points_pct == 1:
+    if days == 1:
         training_features = all_features[test_tasks_indexes[0]]
         training_labels = all_labels[test_tasks_indexes[0]]
         training_corr = all_corr[test_tasks_indexes[0]]
     else:
-        training_features = np.concatenate(all_features[test_tasks_indexes[:2]])
-        training_labels = np.concatenate(all_labels[test_tasks_indexes[:2]])
-        training_corr = np.concatenate(all_corr[test_tasks_indexes[:2]])
+        training_features = np.concatenate((all_features[test_tasks_indexes[0]], all_features[test_tasks_indexes[0]]), axis=0)
+        training_labels = np.concatenate((all_labels[test_tasks_indexes[0]], all_labels[test_tasks_indexes[0]]), axis=0)
+        training_corr = np.concatenate((all_corr[test_tasks_indexes[0]], all_corr[test_tasks_indexes[0]]), axis=0)
     test_features = all_features[test_tasks_indexes[-1]]
     test_labels = all_labels[test_tasks_indexes[-1]]
     test_corr = all_corr[test_tasks_indexes[-1]]
@@ -159,14 +159,14 @@ def split_data_essex(all_features, all_labels, all_experiment_names, settings, v
     val_tasks_test_labels = []
     val_tasks_test_corr = []
 
-    if tr_tasks_tr_points_pct == 1:
+    if days == 1:
         training_features = all_features[validation_tasks_indexes[0]]
         training_labels = all_labels[validation_tasks_indexes[0]]
         training_corr = all_corr[validation_tasks_indexes[0]]
     else:
-        training_features = np.concatenate(all_features[validation_tasks_indexes[:2]])
-        training_labels = np.concatenate(all_labels[validation_tasks_indexes[:2]])
-        training_corr = np.concatenate(all_corr[validation_tasks_indexes[:2]])
+        training_features = np.concatenate((all_features[validation_tasks_indexes[0]], all_features[validation_tasks_indexes[0]]), axis=0)
+        training_labels = np.concatenate((all_labels[validation_tasks_indexes[0]], all_labels[validation_tasks_indexes[0]]), axis=0)
+        training_corr = np.concatenate((all_corr[validation_tasks_indexes[0]], all_corr[validation_tasks_indexes[0]]), axis=0)
     test_features = all_features[validation_tasks_indexes[-1]]
     test_labels = all_labels[validation_tasks_indexes[-1]]
     test_corr = all_corr[validation_tasks_indexes[-1]]

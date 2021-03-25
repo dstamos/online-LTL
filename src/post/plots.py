@@ -25,7 +25,7 @@ def standard_error(data, axis=0):
     return m, m - se, m + se
 
 def plotSE(data, x, color, label):
-    m, ll, hl = standard_error(data)
+    m, ll, hl = confidence_interval(data)
     plt.plot(x, m, '.-', color=color, label=label)
     plt.fill_between(x, ll, hl, alpha=0.1, color=color)
     return
@@ -46,7 +46,10 @@ def plotError(data, settings, cond_to_plot, eval_to_plot, ratio, skip, title, fo
         if xline:
             if xline[c]:
                 plt.plot([xlim[0], xlim[1]], [xline[c], xline[c]], '--k', label='Ground Truth')
-        plt.ylabel(ev)
+        if ev == 'FI':
+            plt.ylabel('FDR')
+        else:
+            plt.ylabel(ev)
     plt.suptitle(title)
     plt.legend(frameon=False)
     plt.savefig(folder+title+'.png', pad_inches=0)
